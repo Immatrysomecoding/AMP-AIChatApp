@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
+import 'screens/chat_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,14 +16,16 @@ class MyApp extends StatelessWidget {
       title: 'Jarvis AI Chat',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
         primaryColor: Colors.blue,
-        scaffoldBackgroundColor: Colors.black,
+        scaffoldBackgroundColor: Colors.white,
+        fontFamily: 'Roboto',
       ),
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
+        '/chat': (context) => const ChatScreen(),
       },
     );
   }
