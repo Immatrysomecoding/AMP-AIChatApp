@@ -149,7 +149,7 @@ Scaffold
                     └── Text (Last message timestamp)
 ```
 
-![Widget Tree Diagram]([https://raw.githubusercontent.com/Immatrysomecoding/AMP-AIChatApp/mock-ui/widget_tree.png](https://drive.google.com/file/d/17GKlDe2Oq3MVcfSEGbvkOPy_cN1ZSjCd/view?usp=sharing))
+![Widget Tree Diagram](https://drive.google.com/file/d/17GKlDe2Oq3MVcfSEGbvkOPy_cN1ZSjCd/view?usp=sharing)
 
 ## Setup
 
