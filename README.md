@@ -11,6 +11,8 @@ This branch contains the mock UI implementation for the application. We've creat
 Widget tree screeonshots:
 
 in screenshot folder
+link drawio: https://drive.google.com/file/d/17GKlDe2Oq3MVcfSEGbvkOPy_cN1ZSjCd/view?usp=sharing
+
 
 #### Login/Signup Screens:
 
@@ -149,7 +151,6 @@ Scaffold
                     └── Text (Last message timestamp)
 ```
 
-![Widget Tree Diagram]([https://drive.google.com/file/d/17GKlDe2Oq3MVcfSEGbvkOPy_cN1ZSjCd/view?usp=sharing])
 ## Setup
 
 1. Clone the repository
