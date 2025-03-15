@@ -3,6 +3,7 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/bot_screen.dart';
+import 'screens/chat_history_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,12 +23,20 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         fontFamily: 'Roboto',
       ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: Colors.blue,
+        scaffoldBackgroundColor: Colors.black,
+        fontFamily: 'Roboto',
+      ),
+      themeMode: ThemeMode.dark,
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
         '/chat': (context) => const ChatScreen(),
         '/bot': (context) => const BotScreen(),
+        '/history': (context) => const ChatHistoryScreen(),
       },
     );
   }

@@ -17,7 +17,7 @@ class _BotScreenState extends State<BotScreen> {
       body: Row(
         children: [
           // Sidebar
-          const Sidebar(selectedItem: 'BOT'),
+          //const Sidebar(selectedItem: 'BOT'),
 
           // Main content area
           const Expanded(
