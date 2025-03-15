@@ -8,6 +8,24 @@ This branch contains the mock UI implementation for the application. We've creat
 
 ### Widget Tree
 
+Widget tree screeonshots:
+
+![Login/Signup Widget Tree](screenshots/Authen.png)
+
+![Chat Screen Widget Tree](screenshots/Chat.png)
+
+![Bot Management Widget Tree](screenshots/Bot.png)
+
+![Create Bot Widget Tree](screenshots/CreateBot.png)
+
+![Chat History Widget Tree](screenshots/ChatHistory.png)
+
+![Sidebar Widget Tree](screenshots/Sidebar.png)
+
+![Prombt Widget Tree](screenshots/Prombt.png)
+
+![Create Prombt Widget Tree](screenshots/CreatePrombt.png)
+
 #### Login/Signup Screens:
 
 ```
@@ -145,7 +163,7 @@ Scaffold
                     └── Text (Last message timestamp)
 ```
 
-![Widget Tree Diagram](https://raw.githubusercontent.com/Immatrysomecoding/AMP-AIChatApp/mock-ui/widget_tree.png)
+![Widget Tree Diagram]([https://raw.githubusercontent.com/Immatrysomecoding/AMP-AIChatApp/mock-ui/widget_tree.png](https://drive.google.com/file/d/17GKlDe2Oq3MVcfSEGbvkOPy_cN1ZSjCd/view?usp=sharing))
 
 ## Setup
 
