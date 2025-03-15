@@ -102,3 +102,8 @@ The app includes overlay panels that slide in from the side:
   - Includes tabs for Public/My Prompts
   - Provides category filtering
   - Each prompt has star, info, and use buttons
+
+- **Create Prompt Dialog**: Center modal dialog when the "+" button is clicked in Prompt Library
+  - Form with fields for prompt name and content
+  - Explanatory information about prompt syntax
+  - Cancel and Create buttons for form submission
