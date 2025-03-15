@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'create_prompt_dialog.dart';
 
 class PromptLibraryOverlay extends StatefulWidget {
   final bool isVisible;
@@ -17,6 +18,7 @@ class PromptLibraryOverlay extends StatefulWidget {
 class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   String _selectedTab = 'Public Prompts';
   String _selectedCategory = 'All';
+  bool _isCreatePromptVisible = false;
   final List<String> _categories = [
     'All',
     'Marketing',
@@ -29,174 +31,200 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
     'Education'
   ];
 
+  void _toggleCreatePrompt() {
+    setState(() {
+      _isCreatePromptVisible = !_isCreatePromptVisible;
+    });
+  }
+
+  void _savePrompt(String name, String prompt) {
+    // In a real app, you would save the prompt to storage or backend
+    // For mock UI, we'll just close the dialog
+    setState(() {
+      _isCreatePromptVisible = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      right: widget.isVisible ? 0 : -500,
-      top: 0,
-      bottom: 0,
-      width: 500,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(-5, 0),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade200),
+    return Stack(
+      children: [
+        // Prompt Library Panel
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          right: widget.isVisible ? 0 : -500,
+          top: 0,
+          bottom: 0,
+          width: 500,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(-5, 0),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Prompt Library',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade200),
                     ),
                   ),
-                  Row(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline),
-                        onPressed: () {},
-                        color: Colors.blue,
+                      const Text(
+                        'Prompt Library',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: widget.onClose,
-                        color: Colors.grey,
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: _toggleCreatePrompt,
+                            color: Colors.blue,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: widget.onClose,
+                            color: Colors.grey,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            // Tabs
-            Row(
-              children: [
-                _buildTab('Public Prompts'),
-                _buildTab('My Prompts'),
-              ],
-            ),
-
-            // Search bar
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                  hintText: 'Search...',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(50),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 0,
-                    horizontal: 16,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.star_outline),
-                    onPressed: () {},
-                    color: Colors.grey,
-                  ),
                 ),
-              ),
-            ),
 
-            // Categories
-            SizedBox(
-              height: 50,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _categories.length,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemBuilder: (context, index) {
-                  final category = _categories[index];
-                  final isSelected = category == _selectedCategory;
+                // Tabs
+                Row(
+                  children: [
+                    _buildTab('Public Prompts'),
+                    _buildTab('My Prompts'),
+                  ],
+                ),
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: ChoiceChip(
-                      label: Text(category),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _selectedCategory = category;
-                          });
-                        }
-                      },
-                      backgroundColor: Colors.white,
-                      selectedColor: Colors.blue,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black,
-                      ),
-                      shape: RoundedRectangleBorder(
+                // Search bar
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                      hintText: 'Search...',
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(50),
-                        side: BorderSide(
-                          color: isSelected ? Colors.blue : Colors.grey.shade300,
-                        ),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 16,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.star_outline),
+                        onPressed: () {},
+                        color: Colors.grey,
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
+                  ),
+                ),
 
-            // Prompt items
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildPromptItem(
-                    'Grammar corrector',
-                    'Improve your spelling and grammar by correcting errors in your writing.',
+                // Categories
+                SizedBox(
+                  height: 50,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _categories.length,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemBuilder: (context, index) {
+                      final category = _categories[index];
+                      final isSelected = category == _selectedCategory;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: ChoiceChip(
+                          label: Text(category),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _selectedCategory = category;
+                              });
+                            }
+                          },
+                          backgroundColor: Colors.white,
+                          selectedColor: Colors.blue,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                            side: BorderSide(
+                              color: isSelected ? Colors.blue : Colors.grey.shade300,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  _buildPromptItem(
-                    'Learn Code FAST!',
-                    'Teach you the code with the most understandable knowledge.',
+                ),
+
+                // Prompt items
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _buildPromptItem(
+                        'Grammar corrector',
+                        'Improve your spelling and grammar by correcting errors in your writing.',
+                      ),
+                      _buildPromptItem(
+                        'Learn Code FAST!',
+                        'Teach you the code with the most understandable knowledge.',
+                      ),
+                      _buildPromptItem(
+                        'Story generator',
+                        'Write your own beautiful story.',
+                      ),
+                      _buildPromptItem(
+                        'Essay improver',
+                        'Improve your content\'s effectiveness with ease.',
+                      ),
+                      _buildPromptItem(
+                        'Pro tips generator',
+                        'Get perfect tips and advice tailored to your field with this prompt!',
+                      ),
+                      _buildPromptItem(
+                        'Resume Editing',
+                        'Provide suggestions on how to improve your resume to make it stand out.',
+                      ),
+                    ],
                   ),
-                  _buildPromptItem(
-                    'Story generator',
-                    'Write your own beautiful story.',
-                  ),
-                  _buildPromptItem(
-                    'Essay improver',
-                    'Improve your content\'s effectiveness with ease.',
-                  ),
-                  _buildPromptItem(
-                    'Pro tips generator',
-                    'Get perfect tips and advice tailored to your field with this prompt!',
-                  ),
-                  _buildPromptItem(
-                    'Resume Editing',
-                    'Provide suggestions on how to improve your resume to make it stand out.',
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+
+        // Create Prompt Dialog
+        if (_isCreatePromptVisible && widget.isVisible)
+          CreatePromptDialog(
+            onCancel: _toggleCreatePrompt,
+            onSave: _savePrompt,
+          ),
+      ],
     );
   }
 
