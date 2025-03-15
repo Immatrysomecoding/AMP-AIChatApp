@@ -10,21 +10,7 @@ This branch contains the mock UI implementation for the application. We've creat
 
 Widget tree screeonshots:
 
-![Login/Signup Widget Tree](screenshots/Authen.png)
-
-![Chat Screen Widget Tree](screenshots/Chat.png)
-
-![Bot Management Widget Tree](screenshots/Bot.png)
-
-![Create Bot Widget Tree](screenshots/CreateBot.png)
-
-![Chat History Widget Tree](screenshots/ChatHistory.png)
-
-![Sidebar Widget Tree](screenshots/Sidebar.png)
-
-![Prombt Widget Tree](screenshots/Prombt.png)
-
-![Create Prombt Widget Tree](screenshots/CreatePrombt.png)
+in screenshot folder
 
 #### Login/Signup Screens:
 
