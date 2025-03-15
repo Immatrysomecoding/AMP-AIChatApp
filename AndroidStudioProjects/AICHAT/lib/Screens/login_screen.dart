@@ -249,6 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     onPressed: () {
                       // Navigate to home screen would go here
+                      Navigator.pushNamed(context, '/chat');
                     },
                   ),
                 ],
