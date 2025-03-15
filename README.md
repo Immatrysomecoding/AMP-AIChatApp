@@ -4,7 +4,7 @@ A Flutter application for AI chatting with a clean, modern interface.
 
 ## Mock UI
 
-This branch contains the mock UI implementation for the application. We've created interface designs for the login, signup, and chat screens.
+This branch contains the mock UI implementation for the application. We've created interface designs for the login, signup, and chat screens with overlay functionality.
 
 ### Widget Tree
 
@@ -52,20 +52,29 @@ Scaffold
     │       ├── Spacer
     │       └── Container (Bottom icons)
     └── Expanded (Chat Area)
-        └── Column
-            ├── Expanded (Chat messages)
-            │   └── SingleChildScrollView
-            │       └── Column
-            │           ├── Center (Welcome message)
-            │           ├── Container (Pro version)
-            │           └── Row (Prompts section)
-            ├── Container (Message input area)
-            │   └── Row
-            │       ├── Model selector
-            │       ├── Create bot button
-            │       ├── Action icons
-            │       └── Input field wrapper
-            └── Container (Token counter)
+        └── Stack
+            ├── Column (Main Content)
+            │   ├── Expanded (Chat messages)
+            │   │   └── SingleChildScrollView
+            │   │       └── Column
+            │   │           ├── Center (Welcome message)
+            │   │           ├── Container (Pro version)
+            │   │           ├── Row (Prompts section)
+            │   │           └── Container (Prompt buttons)
+            │   ├── Container (Message input area)
+            │   │   └── Row
+            │   │       ├── Model selector
+            │   │       ├── Create bot button
+            │   │       ├── Action icons
+            │   │       └── Input field wrapper
+            │   └── Container (Token counter)
+            └── PromptLibraryOverlay (Slides in from right)
+                └── Column
+                    ├── Header (Title and close button)
+                    ├── Tabs (Public/My Prompts)
+                    ├── Search field
+                    ├── Categories
+                    └── Prompt items list
 ```
 
 ![Widget Tree Diagram](https://raw.githubusercontent.com/Immatrysomecoding/AMP-AIChatApp/mock-ui/widget_tree.png)
@@ -82,4 +91,14 @@ Scaffold
 The app uses basic navigation between screens:
 - Login Screen: `/login`
 - Signup Screen: `/signup`
-- Chat Screen: `/chat`
+- Chat Screen: `/chat` 
+
+## Overlay Features
+
+The app includes overlay panels that slide in from the side:
+
+- **Prompt Library**: Slides in from the right side when "View all" is clicked
+  - Shows a list of available prompts
+  - Includes tabs for Public/My Prompts
+  - Provides category filtering
+  - Each prompt has star, info, and use buttons
