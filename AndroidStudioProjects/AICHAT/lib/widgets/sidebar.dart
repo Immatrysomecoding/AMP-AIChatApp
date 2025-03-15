@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
 class Sidebar extends StatelessWidget {
-  const Sidebar({super.key});
+  final String selectedItem;
+
+  const Sidebar({
+    super.key,
+    this.selectedItem = 'Chat',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -45,22 +50,32 @@ class Sidebar extends StatelessWidget {
           _buildNavOption(
             icon: Icons.chat_bubble,
             label: 'Chat',
-            isSelected: true,
-            onTap: () {},
+            isSelected: selectedItem == 'Chat',
+            onTap: () {
+              if (selectedItem != 'Chat') {
+                Navigator.pushReplacementNamed(context, '/chat');
+              }
+            },
           ),
 
           _buildNavOption(
             icon: Icons.smart_toy_outlined,
             label: 'BOT',
-            isSelected: false,
-            onTap: () {},
+            isSelected: selectedItem == 'BOT',
+            onTap: () {
+              if (selectedItem != 'BOT') {
+                Navigator.pushReplacementNamed(context, '/bot');
+              }
+            },
           ),
 
           _buildNavOption(
             icon: Icons.group_outlined,
             label: 'Group',
-            isSelected: false,
-            onTap: () {},
+            isSelected: selectedItem == 'Group',
+            onTap: () {
+              // Navigate to group screen
+            },
           ),
 
           const Spacer(),
