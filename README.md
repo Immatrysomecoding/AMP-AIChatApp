@@ -4,7 +4,7 @@ A Flutter application for AI chatting with a clean, modern interface.
 
 ## Mock UI
 
-This branch contains the mock UI implementation for the application. We've created interface designs for the login, signup, and chat screens with overlay functionality.
+This branch contains the mock UI implementation for the application. We've created interface designs for the login, signup, chat, and bot screens with overlay functionality.
 
 ### Widget Tree
 
@@ -77,6 +77,36 @@ Scaffold
                     └── Prompt items list
 ```
 
+#### Bot Screen:
+
+```
+Scaffold
+└── Row
+    ├── Sidebar (with BOT selected)
+    │   └── Column
+    │       ├── Container (Logo)
+    │       ├── InkWell (Chat option)
+    │       ├── InkWell (BOT option - selected)
+    │       ├── InkWell (Group option)
+    │       ├── Spacer
+    │       └── Container (Bottom icons)
+    └── Expanded (Bot List)
+        └── Column
+            ├── Text (Title - "Bots")
+            ├── TextField (Search)
+            ├── Row
+            │   ├── DropdownButton (Filter)
+            │   └── ElevatedButton (Create Bot)
+            └── Expanded (ListView)
+                └── BotCard (Bot items)
+                    ├── Row (Bot header)
+                    │   ├── Icon
+                    │   ├── Text (Bot name)
+                    │   └── Action buttons
+                    ├── Text (Description)
+                    └── ElevatedButton (Chat Now)
+```
+
 ![Widget Tree Diagram](https://raw.githubusercontent.com/Immatrysomecoding/AMP-AIChatApp/mock-ui/widget_tree.png)
 
 ## Setup
@@ -92,6 +122,7 @@ The app uses basic navigation between screens:
 - Login Screen: `/login`
 - Signup Screen: `/signup`
 - Chat Screen: `/chat` 
+- Bot Screen: `/bot`
 
 ## Overlay Features
 
