@@ -4,7 +4,7 @@ A Flutter application for AI chatting with a clean, modern interface.
 
 ## Mock UI
 
-This branch contains the mock UI implementation for the application. We've created interface designs for the login, signup, chat, and bot screens with overlay functionality.
+This branch contains the mock UI implementation for the application. We've created interface designs for the login, signup, chat, bot management, and chat history screens with overlay functionality.
 
 ### Widget Tree
 
@@ -115,6 +115,36 @@ Scaffold
                     └── Action buttons (Cancel, Create)
 ```
 
+#### Chat History Screen:
+
+```
+Scaffold
+└── Row
+    ├── Sidebar
+    │   └── Column
+    │       ├── Container (Logo)
+    │       ├── InkWell (Chat option)
+    │       ├── InkWell (BOT option)
+    │       ├── InkWell (Group option)
+    │       ├── Spacer
+    │       └── Container (Bottom icons)
+    └── Expanded (Chat History List)
+        └── Column
+            ├── Row (Header)
+            │   ├── Icon
+            │   ├── Text ("Your chat history")
+            │   └── Cancel button (when in selection mode)
+            ├── TextField (Search)
+            ├── Row (Selection info)
+            │   ├── Text (Count of chats)
+            │   └── Select button (or selection count when active)
+            └── Expanded (ListView)
+                └── ChatHistoryCard (for each chat)
+                    ├── Selection indicator (when in selection mode)
+                    ├── Text (Chat title)
+                    └── Text (Last message timestamp)
+```
+
 ![Widget Tree Diagram](https://raw.githubusercontent.com/Immatrysomecoding/AMP-AIChatApp/mock-ui/widget_tree.png)
 
 ## Setup
@@ -131,6 +161,7 @@ The app uses basic navigation between screens:
 - Signup Screen: `/signup`
 - Chat Screen: `/chat` 
 - Bot Screen: `/bot`
+- Chat History Screen: `/history`
 
 ## Overlay Features
 
@@ -161,7 +192,8 @@ lib/
 │   ├── login_screen.dart      # Login screen
 │   ├── signup_screen.dart     # Signup screen
 │   ├── chat_screen.dart       # Chat main screen
-│   └── bot_screen.dart        # Bot management screen
+│   ├── bot_screen.dart        # Bot management screen
+│   └── chat_history_screen.dart # Chat history screen
 └── widgets/                   # Reusable widgets
     ├── sidebar.dart           # App sidebar navigation
     ├── chat_area.dart         # Chat area content
@@ -169,8 +201,37 @@ lib/
     ├── create_prompt_dialog.dart    # Create prompt modal dialog
     ├── bot_list.dart          # Bot list content
     ├── bot_card.dart          # Individual bot card
-    └── create_bot_dialog.dart # Create bot modal dialog
+    ├── create_bot_dialog.dart # Create bot modal dialog
+    ├── chat_history_list.dart # Chat history list
+    └── chat_history_card.dart # Individual chat history item
 ```
+
+## Features Implemented
+
+1. **Authentication Screens**
+   - Login screen with email/password and Google sign-in options
+   - Signup screen with form validation
+   - "Welcome to Jarvis" introduction panel
+
+2. **Chat Interface**
+   - Main chat area with welcome message and prompt suggestions
+   - Message input with model selection and formatting options
+   - Token counter and upgrade prompt
+
+3. **Bot Management**
+   - Bot listing with search and filtering
+   - Bot creation dialog with name, instructions, and knowledge base
+   - Bot interaction options (share, favorite, chat)
+
+4. **Chat History**
+   - Searchable list of previous conversations
+   - Selection mode for batch operations
+   - Chat cards with title and last message timestamp
+
+5. **Navigation & Layout**
+   - Sidebar for main app navigation
+   - Consistent theming across all screens
+   - Responsive layout that works on various screen sizes
 
 ## Next Steps
 
