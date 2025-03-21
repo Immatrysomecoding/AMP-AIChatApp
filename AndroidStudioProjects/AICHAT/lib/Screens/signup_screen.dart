@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -8,8 +10,63 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  // for signup
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
+  Future<void> _signUp() async {
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    var headers = {'x-jarvis-guid': '', 'Content-Type': 'application/json'};
+
+    var body = json.encode({
+      "email": _emailController.text,
+      "password": _passwordController.text,
+      "username": _usernameController.text,
+    });
+
+    try {
+      var response = await http.post(
+        Uri.parse('https://www.apidog.com/api/v1/auth/sign-up'),
+        headers: headers,
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Sign-up successful!")));
+        Navigator.pushNamed(context, '/home');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${response.reasonPhrase}")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("An error occurred: $e")));
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,12 +132,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         childAspectRatio: 1,
                         shrinkWrap: true,
                         children: [
-                          _buildPlatformIcon(Icons.water),  // Edge
-                          _buildPlatformIcon(Icons.language),  // Chrome
-                          _buildPlatformIcon(Icons.apple),  // Safari
-                          _buildPlatformIcon(Icons.desktop_windows),  // Windows
-                          _buildPlatformIcon(Icons.smartphone),  // Mobile
-                          _buildPlatformIcon(Icons.messenger_outline),  // Messenger
+                          _buildPlatformIcon(Icons.water), // Edge
+                          _buildPlatformIcon(Icons.language), // Chrome
+                          _buildPlatformIcon(Icons.apple), // Safari
+                          _buildPlatformIcon(Icons.desktop_windows), // Windows
+                          _buildPlatformIcon(Icons.smartphone), // Mobile
+                          _buildPlatformIcon(
+                            Icons.messenger_outline,
+                          ), // Messenger
                         ],
                       ),
                     ),
@@ -173,6 +232,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                   // Email field
                   TextField(
+                    controller: _emailController,
                     decoration: InputDecoration(
                       labelText: 'Email',
                       labelStyle: const TextStyle(color: Colors.white70),
@@ -206,7 +266,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: Colors.white54,
                         ),
                         onPressed: () {
@@ -237,7 +299,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: Colors.white54,
                         ),
                         onPressed: () {
@@ -262,9 +326,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: () {
-                      // Navigate to home screen would go here
-                    },
+                    onPressed: _isLoading ? null : _signUp,
                   ),
                 ],
               ),
@@ -281,11 +343,7 @@ class _SignupScreenState extends State<SignupScreen> {
         color: Colors.blue,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: 36,
-      ),
+      child: Icon(icon, color: Colors.white, size: 36),
     );
   }
 }
