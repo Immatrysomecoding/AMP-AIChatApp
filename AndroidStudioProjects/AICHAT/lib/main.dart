@@ -1,3 +1,5 @@
+import 'package:aichat/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
@@ -5,7 +7,12 @@ import 'screens/chat_screen.dart';
 import 'screens/bot_screen.dart';
 import 'screens/chat_history_screen.dart';
 
-void main() {
+void main() async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+);
+
+
   runApp(const MyApp());
 }
 
