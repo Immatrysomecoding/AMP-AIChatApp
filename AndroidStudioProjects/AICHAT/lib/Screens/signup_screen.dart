@@ -15,7 +15,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  final TextEditingController _usernameController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -32,40 +31,44 @@ class _SignupScreenState extends State<SignupScreen> {
       _isLoading = true;
     });
 
-    var headers = {'x-jarvis-guid': '', 'Content-Type': 'application/json'};
+    var headers = {
+      'X-Stack-Access-Type': 'client',
+      'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
+      'X-Stack-Publishable-Client-Key':
+          'pck_tqsy29b64a585km2g4wnpc57ypjprzzdch8xzpq0xhayr',
+      'Content-Type': 'application/json',
+    };
 
     var body = json.encode({
       "email": _emailController.text,
       "password": _passwordController.text,
-      "username": _usernameController.text,
     });
 
-    try {
-      var response = await http.post(
-        Uri.parse('https://www.apidog.com/api/v1/auth/sign-up'),
-        headers: headers,
-        body: body,
-      );
+    var request = http.Request(
+      'POST',
+      Uri.parse('https://auth-api.dev.jarvis.cx/api/v1/auth/password/sign-up'),
+    );
+    request.body = json.encode({
+      "email": _emailController.text,
+      "password": _passwordController.text,
+      "verification_callback_url":
+          "https://auth.dev.jarvis.cx/handler/email-verification?after_auth_return_to=%2Fauth%2Fsignin%3Fclient_id%3Djarvis_chat%26redirect%3Dhttps%253A%252F%252Fchat.dev.jarvis.cx%252Fauth%252Foauth%252Fsuccess",
+    });
+    request.headers.addAll(headers);
 
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Sign-up successful!")));
-        Navigator.pushNamed(context, '/home');
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: ${response.reasonPhrase}")),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("An error occurred: $e")));
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+      Navigator.pushNamed(context, '/chat');
+    } else {
+      String responseBody = await response.stream.bytesToString();
+      print('Error ${response.statusCode}: $responseBody'); // Print full response
     }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -252,6 +255,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                   // Password field
                   TextField(
+                    controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Password',
@@ -285,6 +289,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                   // Confirm Password field
                   TextField(
+                    controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
                     decoration: InputDecoration(
                       labelText: 'Confirm Password',

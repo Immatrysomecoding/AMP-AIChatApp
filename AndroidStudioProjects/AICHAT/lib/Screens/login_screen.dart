@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -8,6 +10,53 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  Future<void> _signIn() async {
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid email and password'),
+        ),
+      );
+      return;
+    }
+
+    // Sign in logic would go here
+    var headers = {
+      'X-Stack-Access-Type': 'client',
+      'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
+      'X-Stack-Publishable-Client-Key':
+          'pck_tqsy29b64a585km2g4wnpc57ypjprzzdch8xzpq0xhayr',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('https://auth-api.dev.jarvis.cx/api/v1/auth/password/sign-in'),
+    );
+    request.body = json.encode({
+      "email": _emailController.text,
+      "password": _passwordController.text,
+    });
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+      Navigator.pushNamed(context, '/chat');
+    } else {
+      print("123");
+      print(response.reasonPhrase);
+      final responseBody = await response.stream.bytesToString();
+      print('Error ${response.statusCode}: $responseBody');
+    }
+  }
+
   bool _obscurePassword = true;
 
   @override
@@ -74,12 +123,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         childAspectRatio: 1,
                         shrinkWrap: true,
                         children: [
-                          _buildPlatformIcon(Icons.water),  // Edge
-                          _buildPlatformIcon(Icons.language),  // Chrome
-                          _buildPlatformIcon(Icons.apple),  // Safari
-                          _buildPlatformIcon(Icons.desktop_windows),  // Windows
-                          _buildPlatformIcon(Icons.smartphone),  // Mobile
-                          _buildPlatformIcon(Icons.messenger_outline),  // Messenger
+                          _buildPlatformIcon(Icons.water), // Edge
+                          _buildPlatformIcon(Icons.language), // Chrome
+                          _buildPlatformIcon(Icons.apple), // Safari
+                          _buildPlatformIcon(Icons.desktop_windows), // Windows
+                          _buildPlatformIcon(Icons.smartphone), // Mobile
+                          _buildPlatformIcon(
+                            Icons.messenger_outline,
+                          ), // Messenger
                         ],
                       ),
                     ),
@@ -172,6 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Email field
                   TextField(
+                    controller: _emailController,
                     decoration: InputDecoration(
                       labelText: 'Email',
                       labelStyle: const TextStyle(color: Colors.white70),
@@ -191,6 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Password field
                   TextField(
+                    controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Password',
@@ -205,7 +258,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: Colors.white54,
                         ),
                         onPressed: () {
@@ -247,10 +302,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: () {
-                      // Navigate to home screen would go here
-                      Navigator.pushNamed(context, '/chat');
-                    },
+                    onPressed: _signIn,
                   ),
                 ],
               ),
@@ -267,11 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
         color: Colors.blue,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: 36,
-      ),
+      child: Icon(icon, color: Colors.white, size: 36),
     );
   }
 }
