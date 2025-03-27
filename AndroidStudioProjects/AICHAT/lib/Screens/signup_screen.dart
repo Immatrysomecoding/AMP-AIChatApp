@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:aichat/core/services/auth.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -31,39 +32,18 @@ class _SignupScreenState extends State<SignupScreen> {
       _isLoading = true;
     });
 
-    var headers = {
-      'X-Stack-Access-Type': 'client',
-      'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
-      'X-Stack-Publishable-Client-Key':
-          'pck_tqsy29b64a585km2g4wnpc57ypjprzzdch8xzpq0xhayr',
-      'Content-Type': 'application/json',
-    };
+    AuthService authService = AuthService();
 
-    var body = json.encode({
-      "email": _emailController.text,
-      "password": _passwordController.text,
-    });
-
-    var request = http.Request(
-      'POST',
-      Uri.parse('https://auth-api.dev.jarvis.cx/api/v1/auth/password/sign-up'),
-    );
-    request.body = json.encode({
-      "email": _emailController.text,
-      "password": _passwordController.text,
-      "verification_callback_url":
-          "https://auth.dev.jarvis.cx/handler/email-verification?after_auth_return_to=%2Fauth%2Fsignin%3Fclient_id%3Djarvis_chat%26redirect%3Dhttps%253A%252F%252Fchat.dev.jarvis.cx%252Fauth%252Foauth%252Fsuccess",
-    });
-    request.headers.addAll(headers);
-
-    http.StreamedResponse response = await request.send();
-
-    if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+    try {
+      await authService.signUpWithEmailAndPassword(
+        _emailController.text,
+        _passwordController.text,
+      );
       Navigator.pushNamed(context, '/chat');
-    } else {
-      String responseBody = await response.stream.bytesToString();
-      print('Error ${response.statusCode}: $responseBody'); // Print full response
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
 
     setState(() {

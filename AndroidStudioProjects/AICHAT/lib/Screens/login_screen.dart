@@ -1,3 +1,4 @@
+import 'package:aichat/core/services/auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -26,34 +27,17 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Sign in logic would go here
-    var headers = {
-      'X-Stack-Access-Type': 'client',
-      'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
-      'X-Stack-Publishable-Client-Key':
-          'pck_tqsy29b64a585km2g4wnpc57ypjprzzdch8xzpq0xhayr',
-      'Content-Type': 'application/json',
-    };
-    var request = http.Request(
-      'POST',
-      Uri.parse('https://auth-api.dev.jarvis.cx/api/v1/auth/password/sign-in'),
-    );
-    request.body = json.encode({
-      "email": _emailController.text,
-      "password": _passwordController.text,
-    });
-    request.headers.addAll(headers);
+    AuthService authService = AuthService();
 
-    http.StreamedResponse response = await request.send();
-
-    if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+    try {
+      await authService.signInWithEmailAndPassword(email, password);
       Navigator.pushNamed(context, '/chat');
-    } else {
-      print("123");
-      print(response.reasonPhrase);
-      final responseBody = await response.stream.bytesToString();
-      print('Error ${response.statusCode}: $responseBody');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred: $e'),
+        ),
+      );
     }
   }
 
