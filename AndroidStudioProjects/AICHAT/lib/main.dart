@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
+import 'package:provider/provider.dart';
 import 'screens/signup_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/bot_screen.dart';
 import 'screens/chat_history_screen.dart';
+import 'package:aichat/core/providers/user_provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => UserProvider()),
+      ],
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

@@ -1,7 +1,8 @@
 import 'package:aichat/core/services/auth.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:aichat/core/models/User.dart';
+import 'package:provider/provider.dart';
+import 'package:aichat/core/providers/user_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,28 +16,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   Future<void> _signIn() async {
-    final String email = _emailController.text.trim();
-    final String password = _passwordController.text.trim();
+    bool success = await Provider.of<UserProvider>(
+      context,
+      listen: false,
+    ).signIn(_emailController.text, _passwordController.text);
 
-    if (email.isEmpty || password.isEmpty) {
+    if (success) {
+      Navigator.pushReplacementNamed(context, '/chat');
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid email and password'),
-        ),
-      );
-      return;
-    }
-
-    AuthService authService = AuthService();
-
-    try {
-      await authService.signInWithEmailAndPassword(email, password);
-      Navigator.pushNamed(context, '/chat');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('An error occurred: $e'),
-        ),
+        const SnackBar(content: Text("Sign-in failed. Please try again")),
       );
     }
   }

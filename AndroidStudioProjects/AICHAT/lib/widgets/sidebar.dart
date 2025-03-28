@@ -1,4 +1,6 @@
+import 'package:aichat/core/providers/user_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class Sidebar extends StatelessWidget {
   final String selectedItem;
@@ -113,7 +115,10 @@ class Sidebar extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.exit_to_app),
-                  onPressed: () {},
+                  onPressed: () async {
+                    await Provider.of<UserProvider>(context, listen: false).logout();
+                    Navigator.pushReplacementNamed(context, '/login');
+                  },
                   color: Colors.grey,
                 ),
               ],

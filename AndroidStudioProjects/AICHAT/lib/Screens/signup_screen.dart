@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:aichat/core/services/auth.dart';
+import 'package:aichat/core/models/User.dart';
+import 'package:provider/provider.dart';
+import 'package:aichat/core/providers/user_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -20,7 +21,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  Future<void> _signUp() async {
+  void _signUp() async {
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(
         context,
@@ -28,27 +29,18 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    bool success = await Provider.of<UserProvider>(
+      context,
+      listen: false,
+    ).signUp(_emailController.text, _passwordController.text);
 
-    AuthService authService = AuthService();
-
-    try {
-      await authService.signUpWithEmailAndPassword(
-        _emailController.text,
-        _passwordController.text,
-      );
-      Navigator.pushNamed(context, '/chat');
-    } catch (e) {
+    if (success) {
+      Navigator.pushReplacementNamed(context, '/chat');
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        const SnackBar(content: Text("Sign-up failed. Please try again")),
       );
     }
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override

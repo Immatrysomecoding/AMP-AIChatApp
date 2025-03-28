@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/chat_area.dart';
+import 'package:provider/provider.dart';
+import 'package:aichat/core/providers/user_provider.dart';
+import 'package:aichat/core/models/User.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -10,6 +13,14 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  User? user;
+
+  @override
+  void initState() {
+    super.initState();
+    user = Provider.of<UserProvider>(context, listen: false).user;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
