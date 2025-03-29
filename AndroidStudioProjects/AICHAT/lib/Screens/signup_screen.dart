@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:aichat/core/services/auth.dart';
-import 'package:aichat/core/models/User.dart';
 import 'package:provider/provider.dart';
 import 'package:aichat/core/providers/user_provider.dart';
 

@@ -34,8 +34,6 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<void> logout() async {
-    AuthService _authService = AuthService();
-
     if (_user == null) return;
 
     try {
