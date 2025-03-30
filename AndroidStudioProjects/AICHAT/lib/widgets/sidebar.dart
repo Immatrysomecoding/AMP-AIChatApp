@@ -1,4 +1,4 @@
-import 'package:aichat/core/providers/user_provider.dart';
+import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -116,7 +116,7 @@ class Sidebar extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.exit_to_app),
                   onPressed: () async {
-                    await Provider.of<UserProvider>(context, listen: false).logout();
+                    await Provider.of<UserTokenProvider>(context, listen: false).logout();
                     Navigator.pushReplacementNamed(context, '/login');
                   },
                   color: Colors.grey,

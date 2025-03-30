@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:aichat/core/models/User.dart';
+import 'package:aichat/core/models/UserToken.dart';
 
 class AuthService {
-  Future<User?> signUpWithEmailAndPassword(
+  Future<UserToken?> signUpWithEmailAndPassword(
     String email,
     String password,
   ) async {
@@ -32,7 +32,7 @@ class AuthService {
       print(await response.stream.bytesToString());
       var responseBody = await response.stream.bytesToString();
       var jsonResponse = json.decode(responseBody);
-      User user = User.fromJson(jsonResponse);
+      UserToken user = UserToken.fromJson(jsonResponse);
 
       return user;
     } else {
@@ -42,7 +42,7 @@ class AuthService {
     }
   }
 
-  Future<User?> signInWithEmailAndPassword(String email, String password) async {
+  Future<UserToken?> signInWithEmailAndPassword(String email, String password) async {
     var headers = {
       'X-Stack-Access-Type': 'client',
       'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
@@ -62,7 +62,7 @@ class AuthService {
     if (response.statusCode == 200) {
       var responseBody = await response.stream.bytesToString();
       var jsonResponse = json.decode(responseBody);
-      User user = User.fromJson(jsonResponse);
+      UserToken user = UserToken.fromJson(jsonResponse);
       return user;
     } else {
       print(response.reasonPhrase);

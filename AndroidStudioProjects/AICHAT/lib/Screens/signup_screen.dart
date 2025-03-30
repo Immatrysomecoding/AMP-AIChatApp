@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:aichat/core/providers/user_provider.dart';
+import 'package:aichat/core/providers/user_token_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -27,7 +27,7 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    bool success = await Provider.of<UserProvider>(
+    bool success = await Provider.of<UserTokenProvider>(
       context,
       listen: false,
     ).signUp(_emailController.text, _passwordController.text);

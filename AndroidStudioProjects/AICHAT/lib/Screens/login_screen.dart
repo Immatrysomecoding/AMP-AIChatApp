@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:aichat/core/providers/user_provider.dart';
+import 'package:aichat/core/providers/user_token_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   Future<void> _signIn() async {
-    bool success = await Provider.of<UserProvider>(
+    bool success = await Provider.of<UserTokenProvider>(
       context,
       listen: false,
     ).signIn(_emailController.text, _passwordController.text);

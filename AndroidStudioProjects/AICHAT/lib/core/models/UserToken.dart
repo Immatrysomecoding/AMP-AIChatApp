@@ -1,17 +1,17 @@
-class User {
+class UserToken {
   final String accessToken;
   final String refreshToken;
   final String userId;
 
-  User({
+  UserToken({
     required this.accessToken,
     required this.refreshToken,
     required this.userId,
   });
 
   // Factory constructor to create a User from a JSON map
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
+  factory UserToken.fromJson(Map<String, dynamic> json) {
+    return UserToken(
       accessToken: json['access_token'],
       refreshToken: json['refresh_token'],
       userId: json['user_id'],
@@ -25,12 +25,5 @@ class User {
       'refresh_token': refreshToken,
       'user_id': userId,
     };
-  }
-
-  void printUserInfo() {
-    print('User Information:');
-    print('Access Token: $accessToken');
-    print('Refresh Token: $refreshToken');
-    print('User ID: $userId');
   }
 }

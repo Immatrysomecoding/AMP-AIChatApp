@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:aichat/core/models/User.dart';
+import 'package:aichat/core/models/UserToken.dart';
 import 'package:aichat/core/services/auth.dart';
 
-class UserProvider with ChangeNotifier {
-  User? _user;
+class UserTokenProvider with ChangeNotifier {
+  UserToken? _user;
 
-  User? get user => _user;
+  UserToken? get user => _user;
   final AuthService _authService = AuthService();
 
-  void setUser(User? user) {
+  void setUser(UserToken? user) {
     _user = user;
     notifyListeners(); // Notifies all widgets that rely on this state
   }
 
   Future<bool> signUp(String email, String password) async {
-    User? newUser = await _authService.signUpWithEmailAndPassword(email, password);
+    UserToken? newUser = await _authService.signUpWithEmailAndPassword(email, password);
     if (newUser != null) {
       _user = newUser;
       notifyListeners();
@@ -24,7 +24,7 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<bool> signIn(String email, String password) async {
-    User? newUser = await _authService.signInWithEmailAndPassword(email, password);
+    UserToken? newUser = await _authService.signInWithEmailAndPassword(email, password);
     if (newUser != null) {
       _user = newUser;
       notifyListeners();
