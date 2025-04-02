@@ -6,12 +6,14 @@ import 'screens/chat_screen.dart';
 import 'screens/bot_screen.dart';
 import 'screens/chat_history_screen.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
+import 'package:aichat/core/providers/prompt_provider.dart';
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => UserTokenProvider()),
+        ChangeNotifierProvider(create: (_) => UserTokenProvider()),
+        ChangeNotifierProvider(create: (_) => PromptProvider()),
       ],
       child: MyApp(),
     ),

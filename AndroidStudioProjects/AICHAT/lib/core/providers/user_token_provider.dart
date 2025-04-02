@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:aichat/core/models/UserToken.dart';
-import 'package:aichat/core/services/auth.dart';
+import 'package:aichat/core/services/auth_service.dart';
 
 class UserTokenProvider with ChangeNotifier {
   UserToken? _user;
@@ -16,7 +16,7 @@ class UserTokenProvider with ChangeNotifier {
   Future<bool> signUp(String email, String password) async {
     UserToken? newUser = await _authService.signUpWithEmailAndPassword(email, password);
     if (newUser != null) {
-      _user = newUser;
+      setUser(newUser);
       notifyListeners();
       return true;
     }
@@ -26,7 +26,8 @@ class UserTokenProvider with ChangeNotifier {
   Future<bool> signIn(String email, String password) async {
     UserToken? newUser = await _authService.signInWithEmailAndPassword(email, password);
     if (newUser != null) {
-      _user = newUser;
+      setUser(newUser);
+      print("User signed in with token: ${newUser.accessToken}");
       notifyListeners();
       return true;
     }

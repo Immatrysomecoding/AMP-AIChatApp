@@ -37,12 +37,15 @@ class AuthService {
       return user;
     } else {
       print(response.reasonPhrase);
-      
+
       return null;
     }
   }
 
-  Future<UserToken?> signInWithEmailAndPassword(String email, String password) async {
+  Future<UserToken?> signInWithEmailAndPassword(
+    String email,
+    String password,
+  ) async {
     var headers = {
       'X-Stack-Access-Type': 'client',
       'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
@@ -60,12 +63,21 @@ class AuthService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
+      print("Login successful");
       var responseBody = await response.stream.bytesToString();
+      print("Response: $responseBody"); // Debugging response
+
       var jsonResponse = json.decode(responseBody);
+      if (!jsonResponse.containsKey("access_token")) {
+        print("Error: No accessToken in response");
+        return null;
+      }
+
       UserToken user = UserToken.fromJson(jsonResponse);
+      print("Access Token: ${user.accessToken}"); // Debugging token
       return user;
     } else {
-      print(response.reasonPhrase);
+      print("Login failed: ${response.reasonPhrase}");
       return null;
     }
   }
@@ -91,6 +103,7 @@ class AuthService {
 
     if (response.statusCode == 200) {
       print(await response.stream.bytesToString());
+      print("Logout successful");
     } else {
       print(response.reasonPhrase);
     }

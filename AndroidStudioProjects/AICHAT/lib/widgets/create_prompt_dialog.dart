@@ -1,4 +1,7 @@
+import 'package:aichat/core/providers/prompt_provider.dart';
+import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class CreatePromptDialog extends StatefulWidget {
   final VoidCallback onCancel;
@@ -16,12 +19,14 @@ class CreatePromptDialog extends StatefulWidget {
 
 class _CreatePromptDialogState extends State<CreatePromptDialog> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _promptController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
-    _promptController.dispose();
+    _descriptionController.dispose();
+    _contentController.dispose();
     super.dispose();
   }
 
@@ -142,6 +147,27 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                             ),
                           ],
                         ),
+
+                        const SizedBox(height: 16),
+
+                        // Prompt textarea
+                        TextField(
+                          controller: _descriptionController,
+                          decoration: InputDecoration(
+                            hintText:
+                                'Which type of prompt is this? What is it for?',
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          minLines: 1,
+                          maxLines: 2,
+                        ),
+
                         const SizedBox(height: 8),
 
                         // Info box
@@ -172,13 +198,13 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                           ),
                         ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
 
-                        // Prompt textarea
                         TextField(
-                          controller: _promptController,
+                          controller: _contentController,
                           decoration: InputDecoration(
-                            hintText: 'e.g: Write an article about [TOPIC], make sure to include these keywords: [KEYWORDS]',
+                            hintText:
+                                'e.g: Write an article about [TOPIC], make sure to include these keywords: [KEYWORDS]',
                             filled: true,
                             fillColor: Colors.grey.shade100,
                             border: OutlineInputBorder(
@@ -232,13 +258,33 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                         // Create button
                         ElevatedButton(
                           onPressed: () {
-                            if (_nameController.text.isNotEmpty &&
-                                _promptController.text.isNotEmpty) {
-                              widget.onSave(
-                                  _nameController.text,
-                                  _promptController.text
+                            if (_nameController.text.isEmpty ||
+                                _descriptionController.text.isEmpty ||
+                                _contentController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please fill in all fields.'),
+                                  duration: Duration(seconds: 2),
+                                ),
                               );
                             }
+
+                            if (_contentController.text.isNotEmpty &&
+                                _nameController.text.isNotEmpty) {
+                              Provider.of<PromptProvider>(
+                                context,
+                                listen: false,
+                              ).addPrompt(
+                                _nameController.text,
+                                _descriptionController.text,
+                                _contentController.text,
+                                Provider.of<UserTokenProvider>(
+                                  context,
+                                  listen: false,
+                                ).user!.accessToken,
+                              );
+                            }
+                            widget.onCancel();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,

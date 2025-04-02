@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:aichat/core/providers/prompt_provider.dart';
+import 'package:aichat/core/providers/user_token_provider.dart';
+import 'package:aichat/core/models/Prompt.dart';
 import 'create_prompt_dialog.dart';
 
 class PromptLibraryOverlay extends StatefulWidget {
@@ -19,17 +23,24 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   String _selectedTab = 'Public Prompts';
   String _selectedCategory = 'All';
   bool _isCreatePromptVisible = false;
-  final List<String> _categories = [
-    'All',
-    'Marketing',
-    'Business',
-    'SEO',
-    'Writing',
-    'Coding',
-    'Career',
-    'Chatbot',
-    'Education'
-  ];
+
+  @override
+  void initState() {
+  super.initState();
+  Future.delayed(Duration.zero, () {
+    final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
+    final accessToken = userProvider.user?.accessToken ?? '';
+
+    if (accessToken.isNotEmpty) {
+      final promptProvider = Provider.of<PromptProvider>(context, listen: false);
+      promptProvider.fetchPrompts(accessToken);
+      print("Access token: $accessToken");
+      print("Fetched");
+    } else {
+      print("Access token is empty. Cannot fetch prompts.");
+    }
+  });
+}
 
   void _toggleCreatePrompt() {
     setState(() {
@@ -37,16 +48,11 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
     });
   }
 
-  void _savePrompt(String name, String prompt) {
-    // In a real app, you would save the prompt to storage or backend
-    // For mock UI, we'll just close the dialog
-    setState(() {
-      _isCreatePromptVisible = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final promptProvider = Provider.of<PromptProvider>(context);
+    final List<Prompt> prompts = promptProvider.prompts;
+
     return Stack(
       children: [
         // Prompt Library Panel
@@ -141,77 +147,18 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                   ),
                 ),
 
-                // Categories
-                SizedBox(
-                  height: 50,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemBuilder: (context, index) {
-                      final category = _categories[index];
-                      final isSelected = category == _selectedCategory;
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: ChoiceChip(
-                          label: Text(category),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            if (selected) {
-                              setState(() {
-                                _selectedCategory = category;
-                              });
-                            }
-                          },
-                          backgroundColor: Colors.white,
-                          selectedColor: Colors.blue,
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50),
-                            side: BorderSide(
-                              color: isSelected ? Colors.blue : Colors.grey.shade300,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Prompt items
+                // Prompt items (Dynamic List)
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      _buildPromptItem(
-                        'Grammar corrector',
-                        'Improve your spelling and grammar by correcting errors in your writing.',
-                      ),
-                      _buildPromptItem(
-                        'Learn Code FAST!',
-                        'Teach you the code with the most understandable knowledge.',
-                      ),
-                      _buildPromptItem(
-                        'Story generator',
-                        'Write your own beautiful story.',
-                      ),
-                      _buildPromptItem(
-                        'Essay improver',
-                        'Improve your content\'s effectiveness with ease.',
-                      ),
-                      _buildPromptItem(
-                        'Pro tips generator',
-                        'Get perfect tips and advice tailored to your field with this prompt!',
-                      ),
-                      _buildPromptItem(
-                        'Resume Editing',
-                        'Provide suggestions on how to improve your resume to make it stand out.',
-                      ),
-                    ],
-                  ),
+                  child: prompts.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: prompts.length,
+                          itemBuilder: (context, index) {
+                            final prompt = prompts[index];
+                            return _buildPromptItem(prompt);
+                          },
+                        ),
                 ),
               ],
             ),
@@ -222,7 +169,10 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
         if (_isCreatePromptVisible && widget.isVisible)
           CreatePromptDialog(
             onCancel: _toggleCreatePrompt,
-            onSave: _savePrompt,
+            onSave: (title, content) {
+              // You may call an API to add the new prompt
+              _toggleCreatePrompt();
+            },
           ),
       ],
     );
@@ -261,7 +211,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
     );
   }
 
-  Widget _buildPromptItem(String title, String description) {
+  Widget _buildPromptItem(Prompt prompt) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -277,7 +227,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  prompt.title,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -285,7 +235,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  description,
+                  prompt.content,
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 14,
@@ -297,9 +247,13 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
           Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.star_outline),
-                onPressed: () {},
-                color: Colors.grey,
+                icon: Icon(
+                  prompt.isFavorite ? Icons.star : Icons.star_outline,
+                  color: prompt.isFavorite ? Colors.amber : Colors.grey,
+                ),
+                onPressed: () {
+                  // Handle favorite toggle
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.info_outline),
