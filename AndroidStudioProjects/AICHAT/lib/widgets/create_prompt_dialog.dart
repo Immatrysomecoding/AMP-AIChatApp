@@ -284,6 +284,16 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                                 ).user!.accessToken,
                               );
                             }
+                            Provider.of<PromptProvider>(
+                              context,
+                              listen: false,
+                            ).fetchPrompts(
+                              Provider.of<UserTokenProvider>(
+                                context,
+                                listen: false,
+                              ).user!.accessToken,
+                            );
+
                             widget.onCancel();
                           },
                           style: ElevatedButton.styleFrom(

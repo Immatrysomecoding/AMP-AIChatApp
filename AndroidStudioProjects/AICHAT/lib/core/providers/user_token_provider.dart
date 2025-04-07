@@ -27,7 +27,6 @@ class UserTokenProvider with ChangeNotifier {
     UserToken? newUser = await _authService.signInWithEmailAndPassword(email, password);
     if (newUser != null) {
       setUser(newUser);
-      print("User signed in with token: ${newUser.accessToken}");
       notifyListeners();
       return true;
     }

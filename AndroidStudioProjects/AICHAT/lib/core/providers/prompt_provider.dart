@@ -15,8 +15,16 @@ class PromptProvider with ChangeNotifier {
 
   Future<void> addPrompt(String title, String content,String description , String token) async {
     await _promptService.addPrompt(title, content, description, token);
-    // Optionally, you can fetch the prompts again to refresh the list
-    // _prompts = await _promptService.getPrompts(token);
+    
+    notifyListeners();
+  }
+
+  Future<void> deletePrompt(String id, String token) async {
+    print("id: $id");
+    print("token: $token");
+
+    await _promptService.deletePrompt(id, token);
+    
     notifyListeners();
   }
 }

@@ -21,7 +21,6 @@ class PromptService {
       final responseBody = json.decode(response.body);
 
       List<dynamic> items = responseBody['items'];
-      print("Items: $items");
       // Mapping items to Prompt model
       return items.map((data) => Prompt.fromJson(data)).toList();
     } else {
@@ -66,7 +65,7 @@ class PromptService {
     return null;
   }
 
-  Future<void> deletePrompt(String token, String id) async {
+  Future<void> deletePrompt(String id, String token) async {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
     var request = http.Request(
       'DELETE',
@@ -83,6 +82,7 @@ class PromptService {
       print(await response.stream.bytesToString());
     } else {
       print(response.reasonPhrase);
+      print("Error");
     }
   }
 }

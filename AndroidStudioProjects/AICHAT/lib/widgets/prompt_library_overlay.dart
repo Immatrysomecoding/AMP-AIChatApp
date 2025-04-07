@@ -23,22 +23,30 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   String _selectedTab = 'Public Prompts';
   String _selectedCategory = 'All';
   bool _isCreatePromptVisible = false;
+  String currentUserToken = '';
 
   @override
   void initState() {
-  super.initState();
-  Future.delayed(Duration.zero, () {
-    final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
-    final accessToken = userProvider.user?.accessToken ?? '';
+    super.initState();
+    Future.delayed(Duration.zero, () {
+      final userProvider = Provider.of<UserTokenProvider>(
+        context,
+        listen: false,
+      );
+      final accessToken = userProvider.user?.accessToken ?? '';
 
-    if (accessToken.isNotEmpty) {
-      final promptProvider = Provider.of<PromptProvider>(context, listen: false);
-      promptProvider.fetchPrompts(accessToken);
-    } else {
-      print("Access token is empty. Cannot fetch prompts.");
-    }
-  });
-}
+      if (accessToken.isNotEmpty) {
+        final promptProvider = Provider.of<PromptProvider>(
+          context,
+          listen: false,
+        );
+        promptProvider.fetchPrompts(accessToken);
+        currentUserToken = accessToken;
+      } else {
+        print("Access token is empty. Cannot fetch prompts.");
+      }
+    });
+  }
 
   void _toggleCreatePrompt() {
     setState(() {
@@ -50,6 +58,11 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   Widget build(BuildContext context) {
     final promptProvider = Provider.of<PromptProvider>(context);
     final List<Prompt> prompts = promptProvider.prompts;
+
+    final List<Prompt> publicPrompts =
+        prompts.where((prompt) => prompt.isPublic).toList();
+    final List<Prompt> privatePrompts =
+        prompts.where((prompt) => !prompt.isPublic).toList();
 
     return Stack(
       children: [
@@ -147,16 +160,28 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
 
                 // Prompt items (Dynamic List)
                 Expanded(
-                  child: prompts.isEmpty
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: prompts.length,
-                          itemBuilder: (context, index) {
-                            final prompt = prompts[index];
-                            return _buildPromptItem(prompt);
-                          },
-                        ),
+                  child:
+                      prompts.isEmpty
+                          ? const Center(child: CircularProgressIndicator())
+                          : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount:
+                                _selectedTab == 'Public Prompts'
+                                    ? publicPrompts.length
+                                    : privatePrompts.length,
+                            itemBuilder: (context, index) {
+                              final prompt =
+                                  _selectedTab == 'Public Prompts'
+                                      ? publicPrompts[index]
+                                      : privatePrompts[index];
+
+                              if (_selectedTab == 'Public Prompts') {
+                                return _buildPromptItem(prompt);
+                              } else {
+                                return _buildPrivatePromptItem(prompt);
+                              }
+                            },
+                          ),
                 ),
               ],
             ),
@@ -223,12 +248,12 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              children: [
                 Text(
                   prompt.title,
                   style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -236,10 +261,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 const SizedBox(height: 4),
                 Text(
                   prompt.content,
-                  style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -266,6 +288,78 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 icon: const Icon(Icons.arrow_forward),
                 onPressed: () {},
                 color: Colors.blue,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrivatePromptItem(Prompt prompt) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  prompt.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  prompt.content,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  prompt.isFavorite ? Icons.star : Icons.star_outline,
+                  color: prompt.isFavorite ? Colors.amber : Colors.grey,
+                ),
+                onPressed: () {
+                  // Handle favorite toggle
+                  
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.mode_edit_outlined),
+                onPressed: () {},
+                color: Colors.grey,
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_outlined),
+                onPressed: () {
+                  // Handle delete action
+
+                  final promptProvider = Provider.of<PromptProvider>(
+                    context,
+                    listen: false,
+                  );
+                  promptProvider.deletePrompt(prompt.id, currentUserToken);
+                  promptProvider.fetchPrompts(currentUserToken);
+                },
+                color: Colors.red,
               ),
             ],
           ),

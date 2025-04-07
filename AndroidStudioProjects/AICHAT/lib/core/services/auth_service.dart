@@ -68,13 +68,8 @@ class AuthService {
       print("Response: $responseBody"); // Debugging response
 
       var jsonResponse = json.decode(responseBody);
-      if (!jsonResponse.containsKey("access_token")) {
-        print("Error: No accessToken in response");
-        return null;
-      }
 
       UserToken user = UserToken.fromJson(jsonResponse);
-      print("Access Token: ${user.accessToken}"); // Debugging token
       return user;
     } else {
       print("Login failed: ${response.reasonPhrase}");
