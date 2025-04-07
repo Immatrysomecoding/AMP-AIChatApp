@@ -34,8 +34,6 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
     if (accessToken.isNotEmpty) {
       final promptProvider = Provider.of<PromptProvider>(context, listen: false);
       promptProvider.fetchPrompts(accessToken);
-      print("Access token: $accessToken");
-      print("Fetched");
     } else {
       print("Access token is empty. Cannot fetch prompts.");
     }
@@ -225,21 +223,25 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+                children: [
                 Text(
                   prompt.title,
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   prompt.content,
                   style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 14,
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
