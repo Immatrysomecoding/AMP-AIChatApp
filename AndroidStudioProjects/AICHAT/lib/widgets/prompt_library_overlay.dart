@@ -337,9 +337,27 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                   prompt.isFavorite ? Icons.star : Icons.star_outline,
                   color: prompt.isFavorite ? Colors.amber : Colors.grey,
                 ),
-                onPressed: () {
+                onPressed: () async {
                   // Handle favorite toggle
-                  
+                  final promptProvider = Provider.of<PromptProvider>(
+                    context,
+                    listen: false,
+                  );
+
+                  if (prompt.isFavorite) {
+                    await promptProvider.removePromptFromFavorite(
+                      prompt.id,
+                      currentUserToken,
+                    );
+                  } else {
+                    await promptProvider.addPromptToFavorite(
+                      prompt.id,
+                      currentUserToken,
+                    );
+                  }
+
+                  await Future.delayed(Duration(milliseconds: 100));
+                  await promptProvider.fetchPrompts(currentUserToken);
                 },
               ),
               IconButton(

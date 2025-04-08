@@ -69,9 +69,7 @@ class PromptService {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
     var request = http.Request(
       'DELETE',
-      Uri.parse(
-        'https://api.dev.jarvis.cx/api/v1/prompts/$id',
-      ),
+      Uri.parse('https://api.dev.jarvis.cx/api/v1/prompts/$id'),
     );
 
     request.headers.addAll(headers);
@@ -83,6 +81,44 @@ class PromptService {
     } else {
       print(response.reasonPhrase);
       print("Error");
+    }
+  }
+
+  Future<void> addPromptToFavorite(String id, String token) async {
+    var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+    var request = http.Request(
+      'POST',
+      Uri.parse('https://api.dev.jarvis.cx/api/v1/prompts/$id/favorite'),
+    );
+
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 201) {
+      print(await response.stream.bytesToString());
+      print("Added to favorites");
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> removePromptFromFavorite(String id, String token) async {
+    var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+    var request = http.Request(
+      'DELETE',
+      Uri.parse('https://api.dev.jarvis.cx/api/v1/prompts/$id/favorite'),
+    );
+
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+      print("Removed from favorites");
+    } else {
+      print(response.reasonPhrase);
     }
   }
 }

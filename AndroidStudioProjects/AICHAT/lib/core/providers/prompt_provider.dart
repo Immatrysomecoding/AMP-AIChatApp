@@ -27,4 +27,16 @@ class PromptProvider with ChangeNotifier {
     
     notifyListeners();
   }
+
+  Future<void> addPromptToFavorite(String id, String token) async {
+    await _promptService.addPromptToFavorite(id, token);
+    
+    notifyListeners();
+  }
+
+  Future<void> removePromptFromFavorite(String id, String token) async {
+    await _promptService.removePromptFromFavorite(id, token);
+    
+    notifyListeners();
+  }
 }
