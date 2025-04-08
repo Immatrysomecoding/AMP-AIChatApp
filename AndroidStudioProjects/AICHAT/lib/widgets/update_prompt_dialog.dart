@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:aichat/core/models/Prompt.dart';
 
-class CreatePromptDialog extends StatefulWidget {
+class UpdatePromptDialog extends StatefulWidget {
+  final Prompt prompt;
   final VoidCallback onCancel;
   final Function(String name, String content, String description) onSave;
 
-  const CreatePromptDialog({
+  const UpdatePromptDialog({
     super.key,
+    required this.prompt,
     required this.onCancel,
     required this.onSave,
   });
 
   @override
-  State<CreatePromptDialog> createState() => _CreatePromptDialogState();
+  State<UpdatePromptDialog> createState() => _UpdatePromptDialogState();
 }
 
-class _CreatePromptDialogState extends State<CreatePromptDialog> {
+class _UpdatePromptDialogState extends State<UpdatePromptDialog> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
@@ -61,7 +64,7 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'New Prompt',
+                          'Update Prompt',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -81,43 +84,43 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                        children: [
                         // Name field
                         Row(
                           children: [
-                            const Text(
-                              'Name',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          const Text(
+                            'Name',
+                            style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '*',
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '*',
+                            style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                             ),
+                          ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         TextField(
-                          controller: _nameController,
+                          controller: _nameController..text = widget.prompt.title,
                           decoration: InputDecoration(
-                            hintText: 'Name of the prompt',
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
+                          hintText: 'Name of the prompt',
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           ),
                         ),
 
@@ -126,22 +129,22 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                         // Prompt field
                         Row(
                           children: [
-                            const Text(
-                              'Prompt',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          const Text(
+                            'Prompt',
+                            style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '*',
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '*',
+                            style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                             ),
+                          ),
                           ],
                         ),
 
@@ -149,17 +152,17 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
 
                         // Prompt textarea
                         TextField(
-                          controller: _descriptionController,
+                          controller: _descriptionController..text = widget.prompt.description,
                           decoration: InputDecoration(
-                            hintText:
-                                'Which type of prompt is this? What is it for?',
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.all(16),
+                          hintText:
+                            'Which type of prompt is this? What is it for?',
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.all(16),
                           ),
                           minLines: 1,
                           maxLines: 2,
@@ -171,44 +174,44 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(8),
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 18,
-                                color: Colors.blue.shade700,
+                          children: [
+                            Icon(
+                            Icons.info_outline,
+                            size: 18,
+                            color: Colors.blue.shade700,
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                            child: Text(
+                              'Use square brackets [ ] to specify user input.',
+                              style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 14,
                               ),
-                              const SizedBox(width: 12),
-                              const Expanded(
-                                child: Text(
-                                  'Use square brackets [ ] to specify user input.',
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
+                            ),
+                          ],
                           ),
                         ),
 
                         const SizedBox(height: 8),
 
                         TextField(
-                          controller: _contentController,
+                          controller: _contentController..text = widget.prompt.content,
                           decoration: InputDecoration(
-                            hintText:
-                                'e.g: Write an article about [TOPIC], make sure to include these keywords: [KEYWORDS]',
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.all(16),
+                          hintText:
+                            'e.g: Write an article about [TOPIC], make sure to include these keywords: [KEYWORDS]',
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.all(16),
                           ),
                           minLines: 5,
                           maxLines: 8,
@@ -287,7 +290,7 @@ class _CreatePromptDialogState extends State<CreatePromptDialog> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: const Text('Create'),
+                          child: const Text('Update'),
                         ),
                       ],
                     ),

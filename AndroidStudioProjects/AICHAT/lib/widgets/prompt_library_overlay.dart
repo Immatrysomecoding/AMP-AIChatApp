@@ -4,6 +4,7 @@ import 'package:aichat/core/providers/prompt_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/core/models/Prompt.dart';
 import 'create_prompt_dialog.dart';
+import 'update_prompt_dialog.dart';
 
 class PromptLibraryOverlay extends StatefulWidget {
   final bool isVisible;
@@ -23,7 +24,9 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   String _selectedTab = 'Public Prompts';
   String _selectedCategory = 'All';
   bool _isCreatePromptVisible = false;
+  bool _isUpdatePromptVisible = false;
   String currentUserToken = '';
+  Prompt ? _selectedPrompt;
 
   @override
   void initState() {
@@ -52,6 +55,16 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
     setState(() {
       _isCreatePromptVisible = !_isCreatePromptVisible;
     });
+  }
+
+  void _toggleUpdatePrompt(Prompt? prompt) {
+    setState(() {
+      _isUpdatePromptVisible = !_isUpdatePromptVisible;
+    });
+
+    if (prompt != null) {
+      _selectedPrompt = prompt;
+    }
   }
 
   @override
@@ -192,9 +205,40 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
         if (_isCreatePromptVisible && widget.isVisible)
           CreatePromptDialog(
             onCancel: _toggleCreatePrompt,
-            onSave: (title, content) {
-              // You may call an API to add the new prompt
-              _toggleCreatePrompt();
+            onSave: (title, content, description) async {
+              final promptProvider = Provider.of<PromptProvider>(
+                context,
+                listen: false,
+              );
+              await promptProvider.addPrompt(title, content, description, currentUserToken);
+              promptProvider.fetchPrompts(currentUserToken);
+              
+              setState(() {
+                _isCreatePromptVisible = false;
+              });
+            },
+          ),
+
+      // Under construction Update Prompt Dialog
+      if (_isUpdatePromptVisible && widget.isVisible)
+          UpdatePromptDialog(
+            prompt: _selectedPrompt!,
+            onCancel: () {
+              setState(() {
+                _isUpdatePromptVisible = false;
+              });
+            },
+            onSave: (title, content, description) async {
+              final promptProvider = Provider.of<PromptProvider>(
+                context,
+                listen: false,
+              );
+              await promptProvider.updatePrompt(_selectedPrompt?.id ,title, content, description, currentUserToken);
+              promptProvider.fetchPrompts(currentUserToken);
+              
+              setState(() {
+                _isUpdatePromptVisible = false;
+              });
             },
           ),
       ],
@@ -362,14 +406,13 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
               ),
               IconButton(
                 icon: const Icon(Icons.mode_edit_outlined),
-                onPressed: () {},
+                onPressed: () => _toggleUpdatePrompt(prompt),
                 color: Colors.grey,
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline_outlined),
                 onPressed: () {
                   // Handle delete action
-
                   final promptProvider = Provider.of<PromptProvider>(
                     context,
                     listen: false,

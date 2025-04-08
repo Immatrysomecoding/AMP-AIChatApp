@@ -121,4 +121,37 @@ class PromptService {
       print(response.reasonPhrase);
     }
   }
+
+  Future<void> updatePrompt(
+    String id,
+    String title,
+    String content,
+    String description,
+    String token,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'PATCH',
+      Uri.parse('https://api.dev.jarvis.cx/api/v1/prompts/$id'),
+    );
+    request.body = json.encode({
+      "title": title,
+      "description": description,
+      "content": content,
+      "isPublic": false,
+    });
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
 }

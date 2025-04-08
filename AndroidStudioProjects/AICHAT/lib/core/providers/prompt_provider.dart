@@ -13,9 +13,14 @@ class PromptProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addPrompt(String title, String content,String description , String token) async {
+  Future<void> addPrompt(
+    String title,
+    String content,
+    String description,
+    String token,
+  ) async {
     await _promptService.addPrompt(title, content, description, token);
-    
+
     notifyListeners();
   }
 
@@ -24,19 +29,31 @@ class PromptProvider with ChangeNotifier {
     print("token: $token");
 
     await _promptService.deletePrompt(id, token);
-    
+
     notifyListeners();
   }
 
   Future<void> addPromptToFavorite(String id, String token) async {
     await _promptService.addPromptToFavorite(id, token);
-    
+
     notifyListeners();
   }
 
   Future<void> removePromptFromFavorite(String id, String token) async {
     await _promptService.removePromptFromFavorite(id, token);
-    
+
+    notifyListeners();
+  }
+
+  Future<void> updatePrompt(
+    String? id,
+    String title,
+    String content,
+    String description,
+    String token,
+  ) async {
+    await _promptService.updatePrompt(id!, title, content, description, token);
+
     notifyListeners();
   }
 }
