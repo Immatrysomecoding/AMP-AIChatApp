@@ -26,12 +26,16 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   bool _isCreatePromptVisible = false;
   bool _isUpdatePromptVisible = false;
   String currentUserToken = '';
-  Prompt ? _selectedPrompt;
+  Prompt? _selectedPrompt;
+  String searchQuery = '';
+
+  final List<Prompt> privatePrompts = [];
+  final List<Prompt> publicPrompts = [];
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration.zero, () {
+    Future.delayed(Duration.zero, () async {
       final userProvider = Provider.of<UserTokenProvider>(
         context,
         listen: false,
@@ -43,9 +47,14 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
           context,
           listen: false,
         );
-        promptProvider.fetchPrivatePrompts(accessToken);
-        promptProvider.fetchPublicPrompts(accessToken);
-        currentUserToken = accessToken;
+        await promptProvider.fetchPrivatePrompts(accessToken);
+        await promptProvider.fetchPublicPrompts(accessToken);
+
+        setState(() {
+          privatePrompts.addAll(promptProvider.prompts);
+          publicPrompts.addAll(promptProvider.publicPrompts);
+          currentUserToken = accessToken;
+        });
       } else {
         print("Access token is empty. Cannot fetch prompts.");
       }
@@ -68,11 +77,24 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
     }
   }
 
+  List<Prompt> get filteredPrompts {
+    final prompts =
+        _selectedTab == 'Public Prompts' ? publicPrompts : privatePrompts;
+
+    if (searchQuery.isEmpty) return prompts;
+
+    return prompts
+        .where(
+          (prompt) =>
+              prompt.title.toLowerCase().contains(searchQuery.toLowerCase()),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final promptProvider = Provider.of<PromptProvider>(context);
     final List<Prompt> privatePrompts = promptProvider.prompts;
-
     final List<Prompt> publicPrompts = promptProvider.publicPrompts;
 
     return Stack(
@@ -147,6 +169,11 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        searchQuery = value;
+                      });
+                    },
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       hintText: 'Search...',
@@ -176,21 +203,12 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                           ? const Center(child: CircularProgressIndicator())
                           : ListView.builder(
                             padding: const EdgeInsets.all(16),
-                            itemCount:
-                                _selectedTab == 'Public Prompts'
-                                    ? publicPrompts.length
-                                    : privatePrompts.length,
+                            itemCount: filteredPrompts.length,
                             itemBuilder: (context, index) {
-                              final prompt =
-                                  _selectedTab == 'Public Prompts'
-                                      ? publicPrompts[index]
-                                      : privatePrompts[index];
-
-                              if (_selectedTab == 'Public Prompts') {
-                                return _buildPromptItem(prompt);
-                              } else {
-                                return _buildPrivatePromptItem(prompt);
-                              }
+                              final prompt = filteredPrompts[index];
+                              return _selectedTab == 'Public Prompts'
+                                  ? _buildPublicPromptItem(prompt)
+                                  : _buildPrivatePromptItem(prompt);
                             },
                           ),
                 ),
@@ -208,17 +226,22 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 context,
                 listen: false,
               );
-              await promptProvider.addPrompt(title, content, description, currentUserToken);
+              await promptProvider.addPrompt(
+                title,
+                content,
+                description,
+                currentUserToken,
+              );
               promptProvider.fetchPrivatePrompts(currentUserToken);
-              
+
               setState(() {
                 _isCreatePromptVisible = false;
               });
             },
           ),
 
-      // Under construction Update Prompt Dialog
-      if (_isUpdatePromptVisible && widget.isVisible)
+        // Under construction Update Prompt Dialog
+        if (_isUpdatePromptVisible && widget.isVisible)
           UpdatePromptDialog(
             prompt: _selectedPrompt!,
             onCancel: () {
@@ -231,9 +254,15 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 context,
                 listen: false,
               );
-              await promptProvider.updatePrompt(_selectedPrompt?.id ,title, content, description, currentUserToken);
+              await promptProvider.updatePrompt(
+                _selectedPrompt?.id,
+                title,
+                content,
+                description,
+                currentUserToken,
+              );
               promptProvider.fetchPrivatePrompts(currentUserToken);
-              
+
               setState(() {
                 _isUpdatePromptVisible = false;
               });
@@ -276,7 +305,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
     );
   }
 
-  Widget _buildPromptItem(Prompt prompt) {
+  Widget _buildPublicPromptItem(Prompt prompt) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -317,7 +346,25 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                   prompt.isFavorite ? Icons.star : Icons.star_outline,
                   color: prompt.isFavorite ? Colors.amber : Colors.grey,
                 ),
-                onPressed: () {
+                onPressed: () async {
+                  final promptProvider = Provider.of<PromptProvider>(
+                    context,
+                    listen: false,
+                  );
+                  if (prompt.isFavorite) {
+                    promptProvider.removePromptFromFavorite(
+                      prompt.id,
+                      currentUserToken,
+                    );
+                  } else {
+                    promptProvider.addPromptToFavorite(
+                      prompt.id,
+                      currentUserToken,
+                    );
+                  }
+
+                  await Future.delayed(Duration(milliseconds: 100));
+                  await promptProvider.fetchPublicPrompts(currentUserToken);
                   // Handle favorite toggle
                 },
               ),
@@ -400,7 +447,6 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
 
                   await Future.delayed(Duration(milliseconds: 100));
                   await promptProvider.fetchPrivatePrompts(currentUserToken);
-                  await promptProvider.fetchPublicPrompts(currentUserToken);
                 },
               ),
               IconButton(
@@ -418,7 +464,6 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                   );
                   promptProvider.deletePrompt(prompt.id, currentUserToken);
                   promptProvider.fetchPrivatePrompts(currentUserToken);
-                  promptProvider.fetchPublicPrompts(currentUserToken);
                 },
                 color: Colors.red,
               ),
