@@ -44,6 +44,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
           listen: false,
         );
         promptProvider.fetchPrompts(accessToken);
+        promptProvider.fetchPublicPrompts(accessToken);
         currentUserToken = accessToken;
       } else {
         print("Access token is empty. Cannot fetch prompts.");
@@ -402,6 +403,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
 
                   await Future.delayed(Duration(milliseconds: 100));
                   await promptProvider.fetchPrompts(currentUserToken);
+                  await promptProvider.fetchPublicPrompts(currentUserToken);
                 },
               ),
               IconButton(
@@ -419,6 +421,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                   );
                   promptProvider.deletePrompt(prompt.id, currentUserToken);
                   promptProvider.fetchPrompts(currentUserToken);
+                  promptProvider.fetchPublicPrompts(currentUserToken);
                 },
                 color: Colors.red,
               ),

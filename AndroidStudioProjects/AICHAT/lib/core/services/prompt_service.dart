@@ -3,6 +3,32 @@ import 'package:http/http.dart' as http;
 import 'package:aichat/core/models/Prompt.dart';
 
 class PromptService {
+  Future<List<Prompt>> getPublicPrompts(String token) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    var response = await http.get(
+      Uri.parse(
+        'https://api.dev.jarvis.cx/api/v1/prompts?query&offset=&limit=20&isFavorite=false&isPublic=true',
+      ),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = json.decode(response.body);
+
+      List<dynamic> items = responseBody['items'];
+      print(items);
+      // Mapping items to Prompt model
+      return items.map((data) => Prompt.fromJson(data)).toList();
+    } else {
+      throw Exception("Failed to fetch prompts: ${response.reasonPhrase}");
+    }
+  }
+
   Future<List<Prompt>> getPrompts(String token) async {
     var headers = {
       'x-jarvis-guid': '',
@@ -21,7 +47,7 @@ class PromptService {
       final responseBody = json.decode(response.body);
 
       List<dynamic> items = responseBody['items'];
-      // Mapping items to Prompt model
+      
       return items.map((data) => Prompt.fromJson(data)).toList();
     } else {
       throw Exception("Failed to fetch prompts: ${response.reasonPhrase}");

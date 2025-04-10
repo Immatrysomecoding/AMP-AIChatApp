@@ -2,7 +2,7 @@ class Prompt {
   final String id;
   final String title;
   final String content;
-  final String description;
+  final String? description;
   final bool isPublic;
   final bool isFavorite;
   final String? category;

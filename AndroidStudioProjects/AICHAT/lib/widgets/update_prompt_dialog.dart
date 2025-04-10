@@ -152,7 +152,7 @@ class _UpdatePromptDialogState extends State<UpdatePromptDialog> {
 
                         // Prompt textarea
                         TextField(
-                          controller: _descriptionController..text = widget.prompt.description,
+                          controller: _descriptionController..text = widget.prompt.description!,
                           decoration: InputDecoration(
                           hintText:
                             'Which type of prompt is this? What is it for?',

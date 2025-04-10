@@ -65,7 +65,6 @@ class AuthService {
     if (response.statusCode == 200) {
       print("Login successful");
       var responseBody = await response.stream.bytesToString();
-      print("Response: $responseBody"); // Debugging response
 
       var jsonResponse = json.decode(responseBody);
 

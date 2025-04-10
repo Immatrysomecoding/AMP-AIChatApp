@@ -13,6 +13,11 @@ class PromptProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> fetchPublicPrompts(String token) async {
+    _prompts = await _promptService.getPublicPrompts(token);
+    notifyListeners();
+  }
+
   Future<void> addPrompt(
     String title,
     String content,
