@@ -4,17 +4,19 @@ import 'package:aichat/core/services/prompt_service.dart';
 
 class PromptProvider with ChangeNotifier {
   List<Prompt> _prompts = [];
+  List<Prompt> _publicPrompts = [];
   final PromptService _promptService = PromptService();
 
   List<Prompt> get prompts => _prompts;
+  List<Prompt> get publicPrompts => _publicPrompts;
 
-  Future<void> fetchPrompts(String token) async {
-    _prompts = await _promptService.getPrompts(token);
+  Future<void> fetchPrivatePrompts(String token) async {
+    _prompts = await _promptService.getPrivatePrompts(token);
     notifyListeners();
   }
 
   Future<void> fetchPublicPrompts(String token) async {
-    _prompts = await _promptService.getPublicPrompts(token);
+    _publicPrompts = await _promptService.getPublicPrompts(token);
     notifyListeners();
   }
 

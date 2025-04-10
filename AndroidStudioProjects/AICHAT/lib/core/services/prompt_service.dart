@@ -21,15 +21,14 @@ class PromptService {
       final responseBody = json.decode(response.body);
 
       List<dynamic> items = responseBody['items'];
-      print(items);
-      // Mapping items to Prompt model
+      
       return items.map((data) => Prompt.fromJson(data)).toList();
     } else {
       throw Exception("Failed to fetch prompts: ${response.reasonPhrase}");
     }
   }
 
-  Future<List<Prompt>> getPrompts(String token) async {
+  Future<List<Prompt>> getPrivatePrompts(String token) async {
     var headers = {
       'x-jarvis-guid': '',
       'Authorization': 'Bearer $token',
@@ -47,6 +46,7 @@ class PromptService {
       final responseBody = json.decode(response.body);
 
       List<dynamic> items = responseBody['items'];
+      print(items);
       
       return items.map((data) => Prompt.fromJson(data)).toList();
     } else {

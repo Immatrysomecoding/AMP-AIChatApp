@@ -43,7 +43,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
           context,
           listen: false,
         );
-        promptProvider.fetchPrompts(accessToken);
+        promptProvider.fetchPrivatePrompts(accessToken);
         promptProvider.fetchPublicPrompts(accessToken);
         currentUserToken = accessToken;
       } else {
@@ -71,12 +71,9 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   @override
   Widget build(BuildContext context) {
     final promptProvider = Provider.of<PromptProvider>(context);
-    final List<Prompt> prompts = promptProvider.prompts;
+    final List<Prompt> privatePrompts = promptProvider.prompts;
 
-    final List<Prompt> publicPrompts =
-        prompts.where((prompt) => prompt.isPublic).toList();
-    final List<Prompt> privatePrompts =
-        prompts.where((prompt) => !prompt.isPublic).toList();
+    final List<Prompt> publicPrompts = promptProvider.publicPrompts;
 
     return Stack(
       children: [
@@ -175,7 +172,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 // Prompt items (Dynamic List)
                 Expanded(
                   child:
-                      prompts.isEmpty
+                      publicPrompts.isEmpty && privatePrompts.isEmpty
                           ? const Center(child: CircularProgressIndicator())
                           : ListView.builder(
                             padding: const EdgeInsets.all(16),
@@ -212,7 +209,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 listen: false,
               );
               await promptProvider.addPrompt(title, content, description, currentUserToken);
-              promptProvider.fetchPrompts(currentUserToken);
+              promptProvider.fetchPrivatePrompts(currentUserToken);
               
               setState(() {
                 _isCreatePromptVisible = false;
@@ -235,7 +232,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                 listen: false,
               );
               await promptProvider.updatePrompt(_selectedPrompt?.id ,title, content, description, currentUserToken);
-              promptProvider.fetchPrompts(currentUserToken);
+              promptProvider.fetchPrivatePrompts(currentUserToken);
               
               setState(() {
                 _isUpdatePromptVisible = false;
@@ -402,7 +399,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                   }
 
                   await Future.delayed(Duration(milliseconds: 100));
-                  await promptProvider.fetchPrompts(currentUserToken);
+                  await promptProvider.fetchPrivatePrompts(currentUserToken);
                   await promptProvider.fetchPublicPrompts(currentUserToken);
                 },
               ),
@@ -420,7 +417,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                     listen: false,
                   );
                   promptProvider.deletePrompt(prompt.id, currentUserToken);
-                  promptProvider.fetchPrompts(currentUserToken);
+                  promptProvider.fetchPrivatePrompts(currentUserToken);
                   promptProvider.fetchPublicPrompts(currentUserToken);
                 },
                 color: Colors.red,
