@@ -29,9 +29,6 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   Prompt? _selectedPrompt;
   String searchQuery = '';
 
-  final List<Prompt> privatePrompts = [];
-  final List<Prompt> publicPrompts = [];
-
   @override
   void initState() {
     super.initState();
@@ -51,8 +48,6 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
         await promptProvider.fetchPublicPrompts(accessToken);
 
         setState(() {
-          privatePrompts.addAll(promptProvider.prompts);
-          publicPrompts.addAll(promptProvider.publicPrompts);
           currentUserToken = accessToken;
         });
       } else {
@@ -78,17 +73,23 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   }
 
   List<Prompt> get filteredPrompts {
+    final promptProvider = Provider.of<PromptProvider>(context);
     final prompts =
-        _selectedTab == 'Public Prompts' ? publicPrompts : privatePrompts;
+        _selectedTab == 'Public Prompts'
+            ? promptProvider.publicPrompts
+            : promptProvider.prompts;
 
-    if (searchQuery.isEmpty) return prompts;
+    return prompts.where((prompt) {
+      final matchesSearch =
+          searchQuery.isEmpty ||
+          prompt.title.toLowerCase().contains(searchQuery.toLowerCase());
 
-    return prompts
-        .where(
-          (prompt) =>
-              prompt.title.toLowerCase().contains(searchQuery.toLowerCase()),
-        )
-        .toList();
+      final matchesCategory =
+          _selectedCategory == 'All' ||
+          prompt.category?.toLowerCase() == _selectedCategory.toLowerCase();
+
+      return matchesSearch && matchesCategory;
+    }).toList();
   }
 
   @override
@@ -187,12 +188,37 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                         vertical: 0,
                         horizontal: 16,
                       ),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.star_outline),
-                        onPressed: () {},
-                        color: Colors.grey,
-                      ),
                     ),
+                  ),
+                ),
+
+                // Category Filter
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: DropdownButton<String>(
+                    value: _selectedCategory,
+                    onChanged:
+                        _selectedTab == 'My Prompts'
+                            ? null // Disable when in My Prompts tab
+                            : (String? newValue) {
+                              setState(() {
+                                _selectedCategory = newValue!;
+                              });
+                            },
+                    items:
+                        <String>[
+                          'All',
+                          'Fun',
+                          'Education',
+                          'Work',
+                          'Favorite',
+                          'Other',
+                        ].map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
                   ),
                 ),
 
@@ -347,25 +373,31 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                   color: prompt.isFavorite ? Colors.amber : Colors.grey,
                 ),
                 onPressed: () async {
+                  // Handle favorite toggle
                   final promptProvider = Provider.of<PromptProvider>(
                     context,
                     listen: false,
                   );
-                  if (prompt.isFavorite) {
-                    promptProvider.removePromptFromFavorite(
+
+                  final wasFavorite = prompt.isFavorite; // Save original state
+
+                  setState(() {
+                    prompt.isFavorite = !prompt.isFavorite;
+                  });
+
+                  if (wasFavorite) {
+                    await promptProvider.removePromptFromFavorite(
                       prompt.id,
                       currentUserToken,
                     );
                   } else {
-                    promptProvider.addPromptToFavorite(
+                    await promptProvider.addPromptToFavorite(
                       prompt.id,
                       currentUserToken,
                     );
                   }
 
-                  await Future.delayed(Duration(milliseconds: 100));
                   await promptProvider.fetchPublicPrompts(currentUserToken);
-                  // Handle favorite toggle
                 },
               ),
               IconButton(
@@ -433,7 +465,13 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                     listen: false,
                   );
 
-                  if (prompt.isFavorite) {
+                  final wasFavorite = prompt.isFavorite;
+
+                  setState(() {
+                    prompt.isFavorite = !prompt.isFavorite;
+                  });
+
+                  if (wasFavorite) {
                     await promptProvider.removePromptFromFavorite(
                       prompt.id,
                       currentUserToken,
@@ -445,7 +483,6 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                     );
                   }
 
-                  await Future.delayed(Duration(milliseconds: 100));
                   await promptProvider.fetchPrivatePrompts(currentUserToken);
                 },
               ),

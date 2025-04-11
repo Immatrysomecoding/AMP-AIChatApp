@@ -1,16 +1,16 @@
 class Prompt {
-  final String id;
-  final String title;
-  final String content;
-  final String? description;
-  final bool isPublic;
-  final bool isFavorite;
-  final String? category;
-  final String? language;
-  final String createdAt;
-  final String updatedAt;
-  final String userId;
-  final String userName;
+  String id;
+  String title;
+  String content;
+  String? description;
+  bool isPublic;
+  bool isFavorite;
+  String? category;
+  String? language;
+  String createdAt;
+  String updatedAt;
+  String userId;
+  String userName;
 
   Prompt({
     required this.id,

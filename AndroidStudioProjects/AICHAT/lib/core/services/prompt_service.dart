@@ -46,7 +46,6 @@ class PromptService {
       final responseBody = json.decode(response.body);
 
       List<dynamic> items = responseBody['items'];
-      print(items);
       
       return items.map((data) => Prompt.fromJson(data)).toList();
     } else {
