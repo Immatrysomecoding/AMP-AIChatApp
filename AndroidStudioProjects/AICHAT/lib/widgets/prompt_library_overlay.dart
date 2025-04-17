@@ -25,7 +25,6 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   String _selectedCategory = 'All';
   bool _isCreatePromptVisible = false;
   bool _isUpdatePromptVisible = false;
-  String currentUserToken = '';
   Prompt? _selectedPrompt;
   String searchQuery = '';
 
@@ -47,9 +46,6 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
         await promptProvider.fetchPrivatePrompts(accessToken);
         await promptProvider.fetchPublicPrompts(accessToken);
 
-        setState(() {
-          currentUserToken = accessToken;
-        });
       } else {
         print("Access token is empty. Cannot fetch prompts.");
       }
@@ -93,141 +89,140 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final promptProvider = Provider.of<PromptProvider>(context);
-    final List<Prompt> privatePrompts = promptProvider.prompts;
-    final List<Prompt> publicPrompts = promptProvider.publicPrompts;
+Widget build(BuildContext context) {
+  final promptProvider = Provider.of<PromptProvider>(context);
+  final List<Prompt> privatePrompts = promptProvider.prompts;
+  final List<Prompt> publicPrompts = promptProvider.publicPrompts;
 
-    return Stack(
-      children: [
-        // Prompt Library Panel
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          right: widget.isVisible ? 0 : -500,
-          top: 0,
-          bottom: 0,
-          width: 500,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(-5, 0),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey.shade200),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Prompt Library',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline),
-                            onPressed: _toggleCreatePrompt,
-                            color: Colors.blue,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: widget.onClose,
-                            color: Colors.grey,
-                          ),
-                        ],
-                      ),
-                    ],
+  return Stack(
+    children: [
+      // Prompt Library Panel
+      AnimatedPositioned(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        right: widget.isVisible ? 0 : -500,
+        top: 0,
+        bottom: 0,
+        width: 500,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(-5, 0),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade200),
                   ),
                 ),
-
-                // Tabs
-                Row(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildTab('Public Prompts'),
-                    _buildTab('My Prompts'),
+                    const Text(
+                      'Prompt Library',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: _toggleCreatePrompt,
+                          color: Colors.blue,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: widget.onClose,
+                          color: Colors.grey,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
+              ),
 
-                // Search bar
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        searchQuery = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                      hintText: 'Search...',
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(50),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: 16,
-                      ),
+              // Tabs
+              Row(
+                children: [
+                  _buildTab('Public Prompts'),
+                  _buildTab('My Prompts'),
+                ],
+              ),
+
+              // Search bar
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    hintText: 'Search...',
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(50),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 0,
+                      horizontal: 16,
                     ),
                   ),
                 ),
+              ),
 
-                // Category Filter
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: DropdownButton<String>(
-                    value: _selectedCategory,
-                    onChanged:
-                        _selectedTab == 'My Prompts'
-                            ? null // Disable when in My Prompts tab
-                            : (String? newValue) {
-                              setState(() {
-                                _selectedCategory = newValue!;
-                              });
-                            },
-                    items:
-                        <String>[
-                          'All',
-                          'Fun',
-                          'Education',
-                          'Work',
-                          'Favorite',
-                          'Other',
-                        ].map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                  ),
+              // Category Filter
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: DropdownButton<String>(
+                  value: _selectedCategory,
+                  onChanged: _selectedTab == 'My Prompts'
+                      ? null // Disable when in My Prompts tab
+                      : (String? newValue) {
+                          setState(() {
+                            _selectedCategory = newValue!;
+                          });
+                        },
+                  items: <String>[
+                    'All',
+                    'Fun',
+                    'Education',
+                    'Work',
+                    'Favorite',
+                    'Other',
+                  ].map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
                 ),
+              ),
 
-                // Prompt items (Dynamic List)
-                Expanded(
-                  child:
-                      publicPrompts.isEmpty && privatePrompts.isEmpty
-                          ? const Center(child: CircularProgressIndicator())
-                          : ListView.builder(
+              // Prompt items (Dynamic List)
+              Expanded(
+                child: promptProvider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : publicPrompts.isEmpty && privatePrompts.isEmpty
+                        ? const Center(child: Text('No prompts available'))
+                        : ListView.builder(
                             padding: const EdgeInsets.all(16),
                             itemCount: filteredPrompts.length,
                             itemBuilder: (context, index) {
@@ -237,66 +232,76 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                                   : _buildPrivatePromptItem(prompt);
                             },
                           ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+      ),
 
-        // Create Prompt Dialog
-        if (_isCreatePromptVisible && widget.isVisible)
-          CreatePromptDialog(
-            onCancel: _toggleCreatePrompt,
-            onSave: (title, content, description) async {
-              final promptProvider = Provider.of<PromptProvider>(
-                context,
-                listen: false,
-              );
-              await promptProvider.addPrompt(
-                title,
-                content,
-                description,
-                currentUserToken,
-              );
-              promptProvider.fetchPrivatePrompts(currentUserToken);
+      // Create Prompt Dialog
+      if (_isCreatePromptVisible && widget.isVisible)
+        CreatePromptDialog(
+          onCancel: _toggleCreatePrompt,
+          onSave: (title, content, description) async {
+            final promptProvider = Provider.of<PromptProvider>(
+              context,
+              listen: false,
+            );
+            final userProvider = Provider.of<UserTokenProvider>(
+              context,
+              listen: false,
+            );
+            final currentUserToken = userProvider.user?.accessToken ?? '';
+            await promptProvider.addPrompt(
+              title,
+              content,
+              description,
+              currentUserToken,
+            );
 
-              setState(() {
-                _isCreatePromptVisible = false;
-              });
-            },
-          ),
+            setState(() {
+              _isCreatePromptVisible = false;
+            });
+          },
+        ),
 
-        // Under construction Update Prompt Dialog
-        if (_isUpdatePromptVisible && widget.isVisible)
-          UpdatePromptDialog(
-            prompt: _selectedPrompt!,
-            onCancel: () {
-              setState(() {
-                _isUpdatePromptVisible = false;
-              });
-            },
-            onSave: (title, content, description) async {
-              final promptProvider = Provider.of<PromptProvider>(
-                context,
-                listen: false,
-              );
-              await promptProvider.updatePrompt(
-                _selectedPrompt?.id,
-                title,
-                content,
-                description,
-                currentUserToken,
-              );
-              promptProvider.fetchPrivatePrompts(currentUserToken);
+      // Under construction Update Prompt Dialog
+      if (_isUpdatePromptVisible && widget.isVisible)
+        UpdatePromptDialog(
+          prompt: _selectedPrompt!,
+          onCancel: () {
+            setState(() {
+              _isUpdatePromptVisible = false;
+            });
+          },
+          onSave: (title, content, description) async {
+            final promptProvider = Provider.of<PromptProvider>(
+              context,
+              listen: false,
+            );
+            final userProvider = Provider.of<UserTokenProvider>(
+              context,
+              listen: false,
+            );
+            final currentUserToken = userProvider.user?.accessToken ?? '';
+            await promptProvider.updatePrompt(
+              _selectedPrompt?.id,
+              title,
+              content,
+              description,
+              currentUserToken,
+            );
+            promptProvider.fetchPrivatePrompts(currentUserToken);
 
-              setState(() {
-                _isUpdatePromptVisible = false;
-              });
-            },
-          ),
-      ],
-    );
-  }
+            setState(() {
+              _isUpdatePromptVisible = false;
+            });
+          },
+        ),
+    ],
+  );
+}
+
 
   Widget _buildTab(String title) {
     final isSelected = _selectedTab == title;
@@ -378,6 +383,11 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                     context,
                     listen: false,
                   );
+                  final userProvider = Provider.of<UserTokenProvider>(
+                    context,
+                    listen: false,
+                  );
+                  final currentUserToken = userProvider.user?.accessToken ?? '';
 
                   final wasFavorite = prompt.isFavorite; // Save original state
 
@@ -464,6 +474,11 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                     context,
                     listen: false,
                   );
+                  final userProvider = Provider.of<UserTokenProvider>(
+                    context,
+                    listen: false,
+                  );
+                  final currentUserToken = userProvider.user?.accessToken ?? '';
 
                   final wasFavorite = prompt.isFavorite;
 
@@ -499,6 +514,11 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                     context,
                     listen: false,
                   );
+                  final userProvider = Provider.of<UserTokenProvider>(
+                    context,
+                    listen: false,
+                  );
+                  final currentUserToken = userProvider.user?.accessToken ?? '';
                   promptProvider.deletePrompt(prompt.id, currentUserToken);
                   promptProvider.fetchPrivatePrompts(currentUserToken);
                 },
