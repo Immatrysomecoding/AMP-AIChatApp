@@ -3,10 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:aichat/core/providers/chat_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/core/providers/ai_model_provider.dart';
+import 'package:aichat/core/providers/prompt_provider.dart';
 import 'package:aichat/core/models/ChatMessage.dart';
 import 'package:aichat/core/models/AIModel.dart';
-import 'prompt_library_overlay.dart';
-import 'message_bubble.dart';
+import 'package:aichat/core/models/Prompt.dart';
+import 'package:aichat/widgets/prompt_input_overlay.dart';
+import 'package:aichat/utils/prompt_utils.dart';
+import 'package:aichat/widgets/prompt_library_overlay.dart';
+import 'package:aichat/widgets/message_bubble.dart';
+import 'dart:math';
 
 class ChatArea extends StatefulWidget {
   const ChatArea({super.key});
@@ -18,8 +23,10 @@ class ChatArea extends StatefulWidget {
 class _ChatAreaState extends State<ChatArea> {
   final TextEditingController _messageController = TextEditingController();
   bool _isPromptLibraryVisible = false;
+  bool _isPromptInputOverlayVisible = false;
   final ScrollController _scrollController = ScrollController();
   bool _isFirstLoad = true;
+  Prompt? _selectedPrompt;
 
   @override
   void initState() {
@@ -50,6 +57,14 @@ class _ChatAreaState extends State<ChatArea> {
         // Then load conversations for the selected model
         final chatProvider = Provider.of<ChatProvider>(context, listen: false);
         await chatProvider.fetchConversations(accessToken);
+
+        // Also load prompts
+        final promptProvider = Provider.of<PromptProvider>(
+          context,
+          listen: false,
+        );
+        await promptProvider.fetchPublicPrompts(accessToken);
+        await promptProvider.fetchPrivatePrompts(accessToken);
       } catch (e) {
         print('Error in loadData: $e');
       } finally {
@@ -125,6 +140,66 @@ class _ChatAreaState extends State<ChatArea> {
     setState(() {
       _isPromptLibraryVisible = !_isPromptLibraryVisible;
     });
+  }
+
+  // Show the prompt input overlay when a prompt is selected
+  void _showPromptInput(Prompt prompt) {
+    setState(() {
+      _selectedPrompt = prompt;
+      _isPromptInputOverlayVisible = true;
+    });
+  }
+
+  // Handle prompt selection from library
+  void _handlePromptSelected(Prompt prompt) {
+    // Close the prompt library if it's open
+    if (_isPromptLibraryVisible) {
+      setState(() {
+        _isPromptLibraryVisible = false;
+      });
+    }
+
+    // Show the input overlay
+    _showPromptInput(prompt);
+  }
+
+  void _viewPromptDetails(String promptId) {
+    final promptProvider = Provider.of<PromptProvider>(context, listen: false);
+    final prompts = promptProvider.publicPrompts;
+
+    // Guard clause if no prompts are available
+    if (prompts.isEmpty) {
+      // No prompts available, just open the prompt library
+      _togglePromptLibrary();
+      return;
+    }
+
+    // Try to find prompt by ID
+    try {
+      final prompt = prompts.firstWhere(
+        (p) => p.id == promptId,
+        // If not found by ID, try to find by title containing "learn code"
+        orElse:
+            () => prompts.firstWhere(
+              (p) => p.title.toLowerCase().contains("learn code"),
+              // If still not found, just use the first prompt
+              orElse: () => prompts.first,
+            ),
+      );
+
+      // Show the prompt input overlay
+      _showPromptInput(prompt);
+    } catch (e) {
+      // In case of any error, fallback to opening the prompt library
+      print('Error finding prompt: $e');
+      _togglePromptLibrary();
+    }
+  }
+
+  void _startNewChat() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    chatProvider.startNewConversation();
+    _scrollToBottom();
   }
 
   // Improved _sendMessage method with error handling
@@ -224,22 +299,11 @@ class _ChatAreaState extends State<ChatArea> {
     }
   }
 
-  void _startNewChat() {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    chatProvider.startNewConversation();
-    _scrollToBottom();
-  }
-
-  void _selectPrompt(String prompt) {
-    setState(() {
-      _messageController.text = prompt;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final aiModelProvider = Provider.of<AIModelProvider>(context);
     final chatProvider = Provider.of<ChatProvider>(context);
+    final promptProvider = Provider.of<PromptProvider>(context);
 
     // Get the current messages to display
     final List<ChatMessage> messages =
@@ -452,12 +516,28 @@ class _ChatAreaState extends State<ChatArea> {
         PromptLibraryOverlay(
           isVisible: _isPromptLibraryVisible,
           onClose: _togglePromptLibrary,
+          onPromptSelected: _handlePromptSelected,
         ),
+
+        // Prompt input overlay - positioned at bottom
+        if (_selectedPrompt != null)
+          PromptInputOverlay(
+            isVisible: _isPromptInputOverlayVisible,
+            onClose: () => setState(() => _isPromptInputOverlayVisible = false),
+            prompt: _selectedPrompt!,
+            onSubmit: (promptText) {
+              _messageController.text = promptText;
+              _sendMessage();
+            },
+          ),
       ],
     );
   }
 
   Widget _buildWelcomeScreen() {
+    final promptProvider = Provider.of<PromptProvider>(context);
+    final publicPrompts = promptProvider.publicPrompts;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -471,7 +551,7 @@ class _ChatAreaState extends State<ChatArea> {
                 const Text('👋', style: TextStyle(fontSize: 48)),
                 const SizedBox(height: 16),
                 const Text(
-                  'Hello there!',
+                  'Hi, good afternoon!',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -497,7 +577,7 @@ class _ChatAreaState extends State<ChatArea> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Upgrade to Pro for unlimited access with a 1-month free trial!',
+                        'Upgrade to the Pro version for unlimited access with a 1-month free trial!',
                         style: TextStyle(fontSize: 16, color: Colors.black87),
                       ),
                       const SizedBox(height: 16),
@@ -528,12 +608,47 @@ class _ChatAreaState extends State<ChatArea> {
 
           const SizedBox(height: 40),
 
+          // Use Jarvis on all platforms section
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Use Jarvis on all platforms',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Download Jarvis on your desktop, mobile, and browser.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_forward, color: Colors.blue),
+                onPressed: () {},
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
           // Don't know what to say section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Not sure what to say? Try these prompts!',
+                'Don\'t know what to say? Use a prompt!',
                 style: TextStyle(fontSize: 16, color: Colors.black87),
               ),
               TextButton(
@@ -545,24 +660,38 @@ class _ChatAreaState extends State<ChatArea> {
 
           const SizedBox(height: 16),
 
-          // Sample prompts
-          _buildPromptButton(
-            'Fix grammar errors',
-            onTap: () => _selectPrompt('Fix grammar in the following text: '),
-          ),
-          const SizedBox(height: 12),
-          _buildPromptButton(
-            'Learn to code FAST!',
-            onTap:
-                () => _selectPrompt(
-                  'I want to learn Python programming. Create a detailed learning path for beginners.',
+          // Sample prompts - Show real prompts if available
+          if (publicPrompts.isEmpty)
+            Column(
+              children: [
+                _buildPromptButton(
+                  'Learn Code FAST!',
+                  onTap: () => _togglePromptLibrary(),
                 ),
-          ),
-          const SizedBox(height: 12),
-          _buildPromptButton(
-            'Create a story',
-            onTap: () => _selectPrompt('Write a short story about: '),
-          ),
+                const SizedBox(height: 12),
+                _buildPromptButton(
+                  'Story generator',
+                  onTap: () => _togglePromptLibrary(),
+                ),
+                const SizedBox(height: 12),
+                _buildPromptButton(
+                  'Grammar corrector',
+                  onTap: () => _togglePromptLibrary(),
+                ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                for (int i = 0; i < min(3, publicPrompts.length); i++) ...[
+                  if (i > 0) const SizedBox(height: 12),
+                  _buildPromptButton(
+                    publicPrompts[i].title,
+                    prompt: publicPrompts[i],
+                  ),
+                ],
+              ],
+            ),
         ],
       ),
     );
@@ -807,9 +936,25 @@ class _ChatAreaState extends State<ChatArea> {
     }
   }
 
-  Widget _buildPromptButton(String text, {VoidCallback? onTap}) {
+  Widget _buildPromptButton(
+    String text, {
+    String? promptId,
+    Prompt? prompt,
+    VoidCallback? onTap,
+  }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        if (prompt != null) {
+          _handlePromptSelected(prompt);
+        } else if (promptId != null) {
+          _viewPromptDetails(promptId);
+        } else if (onTap != null) {
+          onTap();
+        } else {
+          // If no specific action is defined, just open the prompt library
+          _togglePromptLibrary();
+        }
+      },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -818,11 +963,12 @@ class _ChatAreaState extends State<ChatArea> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              text,
-              style: const TextStyle(fontSize: 16, color: Colors.black87),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+              ),
             ),
             const Icon(Icons.arrow_forward, color: Colors.blue, size: 20),
           ],
