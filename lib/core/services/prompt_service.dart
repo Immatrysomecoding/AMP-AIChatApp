@@ -81,7 +81,6 @@ class PromptService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 201) {
-      print(await response.stream.bytesToString());
       final responseBody = await response.stream.bytesToString();
       print(responseBody);
       return Prompt.fromJson(json.decode(responseBody));

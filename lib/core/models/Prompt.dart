@@ -34,7 +34,7 @@ class Prompt {
       content: json['content'],
       description: json['description'],
       isPublic: json['isPublic'],
-      isFavorite: json['isFavorite'],
+      isFavorite: json['isFavorite'] ?? false,
       category: json['category'],
       language: json['language'],
       createdAt: json['createdAt'],
