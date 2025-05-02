@@ -26,11 +26,15 @@ class _PromptInputOverlayState extends State<PromptInputOverlay> {
   final Map<String, TextEditingController> _inputControllers = {};
   String _selectedLanguage = 'Auto';
   bool _isFavorite = false;
+  bool _isViewingPrompt = false;
+  late TextEditingController _promptController;
 
   @override
   void initState() {
     super.initState();
+    _promptController = TextEditingController(text: widget.prompt.content);
     _parsePromptForInputs();
+
     // Initialize language from prompt if available
     if (widget.prompt.language != null && widget.prompt.language!.isNotEmpty) {
       _selectedLanguage = widget.prompt.language!;
@@ -46,6 +50,7 @@ class _PromptInputOverlayState extends State<PromptInputOverlay> {
     if (oldWidget.prompt.id != widget.prompt.id) {
       // Clear old controllers and parse new inputs if prompt changed
       _disposeControllers();
+      _promptController.text = widget.prompt.content;
       _parsePromptForInputs();
 
       // Update language
@@ -70,7 +75,7 @@ class _PromptInputOverlayState extends State<PromptInputOverlay> {
   void _parsePromptForInputs() {
     // Parse the prompt content to identify all [PLACEHOLDERS]
     final regex = RegExp(r'\[(.*?)\]');
-    final matches = regex.allMatches(widget.prompt.content);
+    final matches = regex.allMatches(_promptController.text);
 
     // Create a controller for each unique placeholder
     final Set<String> placeholders = {};
@@ -93,11 +98,12 @@ class _PromptInputOverlayState extends State<PromptInputOverlay> {
   @override
   void dispose() {
     _disposeControllers();
+    _promptController.dispose();
     super.dispose();
   }
 
   String _buildFullPrompt() {
-    String fullPrompt = widget.prompt.content;
+    String fullPrompt = _promptController.text;
 
     // Replace each placeholder with user input
     _inputControllers.forEach((placeholder, controller) {
@@ -155,255 +161,381 @@ class _PromptInputOverlayState extends State<PromptInputOverlay> {
     }
   }
 
+  void _toggleViewPrompt() {
+    setState(() {
+      _isViewingPrompt = !_isViewingPrompt;
+    });
+  }
+
   void _goBackOrClose() {
-    widget.onClose();
+    if (_isViewingPrompt) {
+      setState(() {
+        _isViewingPrompt = false;
+      });
+    } else {
+      widget.onClose();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (!widget.isVisible) return const SizedBox.shrink();
 
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Material(
-        color: Colors.transparent,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Semi-transparent overlay covering the whole screen
-            GestureDetector(
-              onTap: widget.onClose, // Close when tapping outside
-              child: Container(
-                height:
-                    MediaQuery.of(context).size.height -
-                    500, // Leave space for prompt panel
-                width: double.infinity,
-                color: Colors.black.withOpacity(0.5),
-              ),
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          // Full screen overlay with semi-transparent background
+          GestureDetector(
+            onTap: widget.onClose,
+            child: Container(color: Colors.black.withOpacity(0.5)),
+          ),
 
-            // Bottom prompt overlay
-            Container(
-              width: double.infinity,
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        InkWell(
-                          onTap: _goBackOrClose,
-                          child: Row(
-                            children: [
-                              const Icon(Icons.arrow_back_ios, size: 16),
-                              const SizedBox(width: 8),
-                              Text(
-                                widget.prompt.title,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            _isFavorite ? Icons.star : Icons.star_border,
-                            size: 22,
-                          ),
-                          onPressed: _toggleFavorite,
-                          color: _isFavorite ? Colors.amber : Colors.grey,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Prompt info
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      "Writing · ${widget.prompt.userName}",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      widget.prompt.description ?? "",
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-
-                  // Language selector
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Row(
-                      children: [
-                        Text(
-                          "Output Language",
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: DropdownButton<String>(
-                            value: _selectedLanguage,
-                            underline: const SizedBox(),
-                            isDense: true,
-                            icon: const Icon(Icons.arrow_drop_down),
-                            items:
-                                <String>[
-                                  'Auto',
-                                  'English',
-                                  'Arabic',
-                                  'Chinese (Hong Kong)',
-                                  'Chinese (Simplified)',
-                                  'Spanish',
-                                ].map<DropdownMenuItem<String>>((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Text(
-                                      value,
-                                      style: const TextStyle(fontSize: 14),
+          // Bottom prompt overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Main prompt panel
+                Container(
+                  width: double.infinity,
+                  color: Colors.white,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            InkWell(
+                              onTap: _goBackOrClose,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.arrow_back_ios, size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _isViewingPrompt
+                                        ? "Back to ${widget.prompt.title}"
+                                        : widget.prompt.title,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                  );
-                                }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedLanguage = newValue ?? 'Auto';
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Input fields for each placeholder
-                  if (_inputControllers.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: _buildInputFields(),
-                      ),
-                    ),
-
-                  // View Prompt button
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: InkWell(
-                      onTap: () {
-                        // Show prompt content in a dialog
-                        showDialog(
-                          context: context,
-                          builder:
-                              (context) => AlertDialog(
-                                title: Text(widget.prompt.title),
-                                content: Text(widget.prompt.content),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Close'),
                                   ),
                                 ],
                               ),
-                        );
-                      },
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "View Prompt",
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.w500,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Send button
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _submitPrompt,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Send',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                            Row(
+                              children: [
+                                if (!_isViewingPrompt)
+                                  IconButton(
+                                    icon: Icon(
+                                      _isFavorite
+                                          ? Icons.star
+                                          : Icons.star_border,
+                                      size: 22,
+                                    ),
+                                    onPressed: _toggleFavorite,
+                                    color:
+                                        _isFavorite
+                                            ? Colors.amber
+                                            : Colors.grey,
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: widget.onClose,
+                                  color: Colors.grey,
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Transform.rotate(
-                            angle: 0.8, // About 45 degrees
-                            child: const Icon(Icons.send, size: 16),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+
+                      if (_isViewingPrompt)
+                        // Prompt editing view
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Edit Prompt Template",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                height: 300,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: SingleChildScrollView(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: TextField(
+                                      controller: _promptController,
+                                      maxLines: null,
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        hintText:
+                                            "Edit prompt template here...",
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.info_outline,
+                                      size: 18,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
+                                      child: Text(
+                                        'Use square brackets [ ] to specify user input. This edit is temporary and will not be saved.',
+                                        style: TextStyle(
+                                          color: Colors.black87,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      // Re-parse for inputs if template changed
+                                      _disposeControllers();
+                                      _parsePromptForInputs();
+                                      _toggleViewPrompt();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: const Text("Apply Changes"),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        // Main prompt input screen
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Prompt info
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                "Writing · ${widget.prompt.userName}",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                widget.prompt.description ?? "",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+
+                            // Language selector
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    "Output Language",
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.info_outline,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      border: Border.all(
+                                        color: Colors.grey.shade300,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: DropdownButton<String>(
+                                      value: _selectedLanguage,
+                                      underline: const SizedBox(),
+                                      isDense: true,
+                                      icon: const Icon(Icons.arrow_drop_down),
+                                      items:
+                                          <String>[
+                                            'Auto',
+                                            'English',
+                                            'Arabic',
+                                            'Chinese (Hong Kong)',
+                                            'Chinese (Simplified)',
+                                            'Spanish',
+                                          ].map<DropdownMenuItem<String>>((
+                                            String value,
+                                          ) {
+                                            return DropdownMenuItem<String>(
+                                              value: value,
+                                              child: Text(
+                                                value,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                      onChanged: (String? newValue) {
+                                        setState(() {
+                                          _selectedLanguage =
+                                              newValue ?? 'Auto';
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Input fields for each placeholder
+                            if (_inputControllers.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: _buildInputFields(),
+                                ),
+                              ),
+
+                            // View Prompt button
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: InkWell(
+                                onTap: _toggleViewPrompt,
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "View & Edit Prompt",
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Icon(
+                                      Icons.edit,
+                                      size: 16,
+                                      color: Colors.blue,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Send button
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: ElevatedButton(
+                                onPressed: _submitPrompt,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: const StadiumBorder(),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Send',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Transform.rotate(
+                                      angle: 0.8, // About 45 degrees
+                                      child: const Icon(Icons.send, size: 16),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                    ],
                   ),
+                ),
 
-                  const SizedBox(height: 16),
-                ],
-              ),
+                // Cover the text input field area
+                Container(
+                  height: 60,
+                  color: Colors.white, // Same as your app background
+                ),
+              ],
             ),
-
-            // Cover the text input field area
-            Container(
-              height: 60,
-              color: Colors.white, // Same as your app background
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -412,8 +544,6 @@ class _PromptInputOverlayState extends State<PromptInputOverlay> {
     final List<Widget> fields = [];
 
     _inputControllers.forEach((placeholder, controller) {
-      // For simplicity in this example, we'll just create a basic text field
-      // In a real app, you might want to adapt the field based on the placeholder name
       fields.add(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
