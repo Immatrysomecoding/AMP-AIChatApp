@@ -1,6 +1,10 @@
+import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:aichat/core/models/Knowledge.dart';
+import 'package:aichat/core/providers/bot_provider.dart';
+import 'package:provider/provider.dart';
 
-class UpdateBot extends StatelessWidget {
+class UpdateBot extends StatefulWidget {
   const UpdateBot({
     super.key,
     required this.botId,
@@ -9,6 +13,7 @@ class UpdateBot extends StatelessWidget {
     required this.initialInstructions,
     required this.onBack,
   });
+
   final String botId;
   final String initialName;
   final String initialDescription;
@@ -16,70 +21,221 @@ class UpdateBot extends StatelessWidget {
   final VoidCallback onBack;
 
   @override
+  _UpdateBotState createState() => _UpdateBotState();
+}
+
+class _UpdateBotState extends State<UpdateBot> {
+  late TextEditingController _descriptionController;
+  late TextEditingController _instructionsController;
+  late String _description;
+  late String _instructions;
+  List<Knowledge> _importedKnowledge = [];
+  bool _isLoadingKnowledge = true;
+  late String _currentInitialInstructions; // track updates locally
+  late String _currentInitialDescription; // track updates locally
+  late String _botName;
+  late String _initialBotName;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _description = widget.initialDescription;
+    _instructions = widget.initialInstructions;
+
+    _currentInitialInstructions = widget.initialInstructions;
+    _currentInitialDescription = widget.initialDescription;
+    _botName = widget.initialName;
+    _initialBotName = widget.initialName;
+
+    _descriptionController = TextEditingController(text: _description);
+    _instructionsController = TextEditingController(text: _instructions);
+
+    _descriptionController.addListener(_onChanges);
+    _instructionsController.addListener(_onChanges);
+
+    _loadKnowledge();
+  }
+
+  void _loadKnowledge() async {
+    final data = await fetchImportedKnowledge(context, widget.botId);
+    setState(() {
+      _importedKnowledge = data;
+      _isLoadingKnowledge = false;
+    });
+  }
+
+  void _onChanges() {
+    setState(() {
+      _description = _descriptionController.text;
+      _instructions = _instructionsController.text;
+    });
+  }
+
+  bool _isSaveEnabled() {
+    return _description != _currentInitialDescription ||
+        _instructions != _currentInitialInstructions ||
+        _botName != _initialBotName;
+  }
+
+  void _editNameDialog() {
+    final nameController = TextEditingController(text: _botName);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Bot Name'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              labelText: 'Bot Name',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _botName = nameController.text.trim();
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String getUserToken() {
+    final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
+    return userProvider.user?.accessToken ?? '';
+  }
+
+  Future<List<Knowledge>> fetchImportedKnowledge(
+    BuildContext context,
+    String botId,
+  ) async {
+    String accessToken = getUserToken();
+    if (accessToken.isEmpty) return [];
+
+    final botProvider = Provider.of<BotProvider>(context, listen: false);
+    return await botProvider.getImportedKnowledge(accessToken, botId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(initialName),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                _botName + (_botName != _initialBotName ? '*' : ''),
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 20),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: _editNameDialog,
+            ),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            onBack();
-          },
+          onPressed: widget.onBack,
         ),
       ),
       body: Row(
         children: [
-          // Knowledge Base
+          // Knowledge Base Column
           Expanded(
             flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
                     'Knowledge Base',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const ListTile(
-                  leading: Icon(Icons.storage),
-                  title: Text("Bojack Horseman's..."),
-                  trailing: Icon(Icons.delete),
-                ),
-                const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child:
+                        _isLoadingKnowledge
+                            ? const Center(child: CircularProgressIndicator())
+                            : _importedKnowledge.isEmpty
+                            ? const Center(child: Text("No knowledge sources"))
+                            : ListView.builder(
+                              itemCount: _importedKnowledge.length,
+                              itemBuilder: (context, index) {
+                                final knowledge = _importedKnowledge[index];
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(Icons.storage),
+                                  title: Text(knowledge.knowledgeName),
+                                  subtitle: Text(
+                                    knowledge.description.isNotEmpty
+                                        ? knowledge.description
+                                        : 'No description',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: () {
+                                      // TODO: Add delete logic
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      // TODO: Add import logic
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('Add knowledge source'),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
-          // Preview
+          // Preview Column
           Expanded(
             flex: 3,
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
                     'Preview',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const Spacer(),
-                const Icon(Icons.smart_toy, size: 48, color: Colors.grey),
-                const Text("No messages yet"),
-                const Text("Start a conversation to test your bot!"),
-                const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
+                  const Spacer(),
+                  const Center(
+                    child: Column(
+                      children: [
+                        Icon(Icons.smart_toy, size: 48, color: Colors.grey),
+                        SizedBox(height: 8),
+                        Text("No messages yet"),
+                        Text("Start a conversation to test your bot!"),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
                     children: [
                       Expanded(
                         child: TextField(
@@ -93,64 +249,104 @@ class UpdateBot extends StatelessWidget {
                       const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Icons.send),
-                        onPressed: () {},
+                        onPressed: () {
+                          // TODO: Implement send logic
+                        },
                       ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
-          // Settings
+          // Settings Column
           Expanded(
             flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
                     'Settings',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Text(
+                  const SizedBox(height: 8),
+                  const Text(
                     'Persona & Instructions',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: TextField(
+                  const SizedBox(height: 8),
+                  TextField(
                     maxLines: 6,
-                    controller: TextEditingController(
-                      text: initialInstructions,
+                    controller: _instructionsController,
+                    decoration: const InputDecoration(
+                      labelText: "Instructions",
+                      border: OutlineInputBorder(),
                     ),
-                    decoration: InputDecoration(border: OutlineInputBorder()),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0),
-                  child: ElevatedButton(
-                    onPressed: () {},
+
+                  const SizedBox(height: 8),
+
+                  TextField(
+                    maxLines: 6,
+                    controller: _descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: "Description",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed:
+                        _isSaveEnabled()
+                            ? () async {
+                              final botProvider = Provider.of<BotProvider>(
+                                context,
+                                listen: false,
+                              );
+                              String accessToken = getUserToken();
+
+                              if (accessToken.isNotEmpty) {
+                                await botProvider.updateBot(
+                                  accessToken,
+                                  widget.botId,
+                                  _botName,
+                                  _instructions,
+                                  _description,
+                                );
+
+                                // Update internal "initial" values so Save button disables
+                                setState(() {
+                                  _currentInitialDescription = _description;
+                                  _currentInitialInstructions = _instructions;
+                                  _initialBotName = _botName;
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Bot updated successfully.'),
+                                  ),
+                                );
+                              }
+                            }
+                            : null,
                     child: const Text("Save Changes"),
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    "This section is where you input the prompt (instructions) for the bot. Here, you should clearly define the bot’s personality, behavior, and all the detailed guidelines it must follow.",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    _instructionsController.dispose();
+    super.dispose();
   }
 }

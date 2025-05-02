@@ -202,7 +202,7 @@ class BotService {
     String token,
     String botId,
   ) async {
-    var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer {{kb_token}}'};
+    var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
     var request = http.Request(
       'GET',
       Uri.parse(
@@ -215,8 +215,8 @@ class BotService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
       final responseBody = await response.stream.bytesToString();
+      print("Response Body: $responseBody");
       final decoded = json.decode(responseBody);
       if (decoded['data'] != null && decoded['data'] is List) {
         List<dynamic> items = decoded['data'];

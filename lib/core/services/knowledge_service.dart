@@ -6,6 +6,9 @@ import 'package:http/http.dart' as http;
 
 class KnowledgeService {
   String baseUrl = 'https://knowledge-api.dev.jarvis.cx';
+  // hide this token in production later
+  String slackBotToken =
+      "xoxb-8819330817814-8812852691495-9aqbmPUg02hRl4TvHCIxMlTe";
 
   Future<List<Knowledge>> fetchKnowledge(String token) async {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
@@ -158,14 +161,9 @@ class KnowledgeService {
     };
     var request = http.Request(
       'POST',
-      Uri.parse(
-        '$baseUrl/kb-core/v1/knowledge/$knowledgeId/web',
-      ),
+      Uri.parse('$baseUrl/kb-core/v1/knowledge/$knowledgeId/web'),
     );
-    request.body = json.encode({
-      "unitName": unitName,
-      "webUrl": url,
-    });
+    request.body = json.encode({"unitName": unitName, "webUrl": url});
     request.headers.addAll(headers);
 
     http.StreamedResponse response = await request.send();
@@ -180,41 +178,96 @@ class KnowledgeService {
   }
 
   Future<void> uploadLocalFileToKnowledge(
-  String token,
-  String knowledgeId,
-  PlatformFile file,
-) async {
-  var uri = Uri.parse('$baseUrl/kb-core/v1/knowledge/$knowledgeId/local-file');
+    String token,
+    String knowledgeId,
+    PlatformFile file,
+  ) async {
+    var uri = Uri.parse(
+      '$baseUrl/kb-core/v1/knowledge/$knowledgeId/local-file',
+    );
 
-  var request = http.MultipartRequest('POST', uri)
-    ..headers.addAll({
+    var request = http.MultipartRequest('POST', uri)
+      ..headers.addAll({
+        'x-jarvis-guid': '',
+        'Authorization': 'Bearer $token',
+        // DO NOT manually set Content-Type here; MultipartRequest will handle it
+      });
+
+    // Add the file
+    // request.files.add(
+    //   http.MultipartFile.fromBytes(
+    //     'file', // Field name (must match your Java example)
+    //     file.bytes!, // PlatformFile gives you bytes
+    //     filename: file.name,
+    //     contentType: MediaType('application', 'octet-stream'), // generic type
+    //   ),
+    // );
+
+    try {
+      var streamedResponse = await request.send();
+
+      if (streamedResponse.statusCode == 200) {
+        var responseString = await streamedResponse.stream.bytesToString();
+        print("Upload local file success: $responseString");
+      } else {
+        print(
+          "Upload local file failed with status: ${streamedResponse.statusCode}",
+        );
+        print(await streamedResponse.stream.bytesToString());
+      }
+    } catch (e) {
+      print('Upload failed: $e');
+    }
+  }
+
+  Future<void> uploadDataFromSlack(
+    String token,
+    String knowledgeId,
+    String unitName,
+    String slackWorkSpace,
+  ) async {
+    var headers = {
       'x-jarvis-guid': '',
       'Authorization': 'Bearer $token',
-      // DO NOT manually set Content-Type here; MultipartRequest will handle it
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/knowledge/$knowledgeId/slack'),
+    );
+    request.body = json.encode({
+      "unitName": unitName,
+      "slackWorkspace": slackWorkSpace,
+      "slackBotToken": slackBotToken,
     });
+    request.headers.addAll(headers);
 
-  // Add the file
-  // request.files.add(
-  //   http.MultipartFile.fromBytes(
-  //     'file', // Field name (must match your Java example)
-  //     file.bytes!, // PlatformFile gives you bytes
-  //     filename: file.name,
-  //     contentType: MediaType('application', 'octet-stream'), // generic type
-  //   ),
-  // );
+    http.StreamedResponse response = await request.send();
 
-  try {
-    var streamedResponse = await request.send();
-
-    if (streamedResponse.statusCode == 200) {
-      var responseString = await streamedResponse.stream.bytesToString();
-      print("Upload local file success: $responseString");
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
     } else {
-      print("Upload local file failed with status: ${streamedResponse.statusCode}");
-      print(await streamedResponse.stream.bytesToString());
+      print(response.reasonPhrase);
     }
-  } catch (e) {
-    print('Upload failed: $e');
   }
-}
+
+  Future<void> uploadDataFromGGDrive(String token, String knowledgeId) async {
+    var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse(
+        '$baseUrl/kb-core/v1/knowledge/$knowledgeId/google-drive',
+      ),
+    );
+
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:aichat/core/models/Knowledge.dart';
 import 'package:flutter/material.dart';
 import 'package:aichat/core/models/Bot.dart';
 import 'package:aichat/core/services/bot_service.dart';
@@ -65,6 +66,27 @@ class BotProvider with ChangeNotifier{
     _isLoading = true;
     notifyListeners();
     await _botService.updateBot(token, botId, botName, instruction, description);
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<List<Knowledge>> getImportedKnowledge(String token, String botId) async {
+    _isLoading = true;
+    notifyListeners();
+    List<Knowledge> knowledge = await _botService.getImportedKnowledge(token, botId);
+    _isLoading = false;
+    notifyListeners();
+    return knowledge;
+  }
+
+  Future<void> deleteKnowledgeFromBot(
+    String token,
+    String botId,
+    String knowledgeId,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+    await _botService.deleteKnowledgeFromBot(token, botId, knowledgeId);
     _isLoading = false;
     notifyListeners();
   }
