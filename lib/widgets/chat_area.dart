@@ -7,10 +7,10 @@ import 'package:aichat/core/providers/prompt_provider.dart';
 import 'package:aichat/core/models/ChatMessage.dart';
 import 'package:aichat/core/models/AIModel.dart';
 import 'package:aichat/core/models/Prompt.dart';
-import 'package:aichat/widgets/prompt_input_overlay.dart';
-import 'package:aichat/utils/prompt_utils.dart';
 import 'package:aichat/widgets/prompt_library_overlay.dart';
+import 'package:aichat/utils/prompt_utils.dart';
 import 'package:aichat/widgets/message_bubble.dart';
+import 'package:aichat/widgets/prompt_input_overlay.dart';
 import 'dart:math';
 
 class ChatArea extends StatefulWidget {
@@ -519,7 +519,7 @@ class _ChatAreaState extends State<ChatArea> {
           onPromptSelected: _handlePromptSelected,
         ),
 
-        // Prompt input overlay - positioned at bottom
+        // Use our improved prompt input overlay instead of the old one
         if (_selectedPrompt != null)
           PromptInputOverlay(
             isVisible: _isPromptInputOverlayVisible,
