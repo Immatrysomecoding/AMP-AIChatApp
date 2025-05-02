@@ -9,11 +9,13 @@ import 'update_prompt_dialog.dart';
 class PromptLibraryOverlay extends StatefulWidget {
   final bool isVisible;
   final VoidCallback onClose;
+  final Function(Prompt)? onPromptSelected; // New callback for prompt selection
 
   const PromptLibraryOverlay({
     super.key,
     required this.isVisible,
     required this.onClose,
+    this.onPromptSelected, // Add this parameter
   });
 
   @override
@@ -266,7 +268,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
             },
           ),
 
-        // Under construction Update Prompt Dialog
+        // Update Prompt Dialog
         if (_isUpdatePromptVisible && widget.isVisible)
           UpdatePromptDialog(
             prompt: _selectedPrompt!,
@@ -407,7 +409,10 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
               ),
               IconButton(
                 icon: const Icon(Icons.arrow_forward),
-                onPressed: () {},
+                onPressed:
+                    widget.onPromptSelected != null
+                        ? () => widget.onPromptSelected!(prompt)
+                        : null,
                 color: Colors.blue,
               ),
             ],
@@ -425,88 +430,94 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
         border: Border.all(color: Colors.grey.shade200),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  prompt.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+      child: InkWell(
+        onTap:
+            widget.onPromptSelected != null
+                ? () => widget.onPromptSelected!(prompt)
+                : null,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    prompt.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 4),
+                  Text(
+                    prompt.content,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(
+                    prompt.isFavorite ? Icons.star : Icons.star_outline,
+                    color: prompt.isFavorite ? Colors.amber : Colors.grey,
+                  ),
+                  onPressed: () async {
+                    // Handle favorite toggle
+                    final promptProvider = Provider.of<PromptProvider>(
+                      context,
+                      listen: false,
+                    );
+
+                    final wasFavorite = prompt.isFavorite;
+
+                    setState(() {
+                      prompt.isFavorite = !prompt.isFavorite;
+                    });
+
+                    if (wasFavorite) {
+                      await promptProvider.removePromptFromFavorite(
+                        prompt.id,
+                        currentUserToken,
+                      );
+                    } else {
+                      await promptProvider.addPromptToFavorite(
+                        prompt.id,
+                        currentUserToken,
+                      );
+                    }
+
+                    await promptProvider.fetchPrivatePrompts(currentUserToken);
+                  },
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  prompt.content,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                IconButton(
+                  icon: const Icon(Icons.mode_edit_outlined),
+                  onPressed: () => _toggleUpdatePrompt(prompt),
+                  color: Colors.grey,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_outlined),
+                  onPressed: () {
+                    // Handle delete action
+                    final promptProvider = Provider.of<PromptProvider>(
+                      context,
+                      listen: false,
+                    );
+                    promptProvider.deletePrompt(prompt.id, currentUserToken);
+                    promptProvider.fetchPrivatePrompts(currentUserToken);
+                  },
+                  color: Colors.red,
                 ),
               ],
             ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                icon: Icon(
-                  prompt.isFavorite ? Icons.star : Icons.star_outline,
-                  color: prompt.isFavorite ? Colors.amber : Colors.grey,
-                ),
-                onPressed: () async {
-                  // Handle favorite toggle
-                  final promptProvider = Provider.of<PromptProvider>(
-                    context,
-                    listen: false,
-                  );
-
-                  final wasFavorite = prompt.isFavorite;
-
-                  setState(() {
-                    prompt.isFavorite = !prompt.isFavorite;
-                  });
-
-                  if (wasFavorite) {
-                    await promptProvider.removePromptFromFavorite(
-                      prompt.id,
-                      currentUserToken,
-                    );
-                  } else {
-                    await promptProvider.addPromptToFavorite(
-                      prompt.id,
-                      currentUserToken,
-                    );
-                  }
-
-                  await promptProvider.fetchPrivatePrompts(currentUserToken);
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.mode_edit_outlined),
-                onPressed: () => _toggleUpdatePrompt(prompt),
-                color: Colors.grey,
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline_outlined),
-                onPressed: () {
-                  // Handle delete action
-                  final promptProvider = Provider.of<PromptProvider>(
-                    context,
-                    listen: false,
-                  );
-                  promptProvider.deletePrompt(prompt.id, currentUserToken);
-                  promptProvider.fetchPrivatePrompts(currentUserToken);
-                },
-                color: Colors.red,
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
