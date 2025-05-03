@@ -130,6 +130,7 @@ class Sidebar extends StatelessWidget {
                     await Provider.of<UserTokenProvider>(context, listen: false).logout();
                     Navigator.pushReplacementNamed(context, '/login');
                   },
+                  tooltip: 'Logout',
                   color: Colors.grey,
                 ),
               ],
