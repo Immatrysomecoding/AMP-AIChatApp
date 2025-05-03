@@ -3,12 +3,11 @@ import 'package:aichat/core/models/Knowledge.dart';
 import 'package:aichat/core/models/KnowledgeUnit.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class KnowledgeService {
-  String baseUrl = 'https://knowledge-api.dev.jarvis.cx';
-  // hide this token in production later
-  String slackBotToken =
-      "xoxb-8819330817814-8812852691495-9aqbmPUg02hRl4TvHCIxMlTe";
+  String baseUrl = dotenv.env['KNOWLEDGE_URL'] ?? '';
+  String slackBotToken = dotenv.env['SLACK_BOT_TOKEN'] ?? '';
 
   Future<List<Knowledge>> fetchKnowledge(String token) async {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
@@ -62,7 +61,10 @@ class KnowledgeService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+      print("Create knowledge success");
+      final responseBody = await response.stream.bytesToString();
+      print("Response: $responseBody");
+      return ;
     } else {
       print(response.reasonPhrase);
     }

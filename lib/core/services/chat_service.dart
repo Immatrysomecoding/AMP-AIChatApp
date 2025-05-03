@@ -2,17 +2,17 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:aichat/core/models/ChatMessage.dart';
 import 'package:aichat/core/models/AIModel.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChatService {
-  final String baseUrl = 'https://api.dev.jarvis.cx';
+  final String baseUrl = dotenv.env['CHAT_URL'] ?? '';
 
   Map<String, String> buildHeaders(String token) => {
     'Authorization': 'Bearer $token',
     'x-jarvis-guid': '',
-    'X-Stack-Access-Type': 'client',
-    'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
-    'X-Stack-Publishable-Client-Key':
-        'pck_tqsy29b64a585km2g4wnpc57ypjprzzdch8xzpq0xhayr',
+    'X-Stack-Access-Type': dotenv.env['STACK_ACCESS_KEY'] ?? '',
+    'X-Stack-Project-Id': dotenv.env['STACK_PROJECT_ID'] ?? '',
+    'X-Stack-Publishable-Client-Key': dotenv.env['STACK_CLIENT_KEY'] ?? '',
     'Content-Type': 'application/json',
   };
 

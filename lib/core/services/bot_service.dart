@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:aichat/core/models/Knowledge.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:aichat/core/models/Bot.dart';
 
 class BotService {
-  String baseUrl = 'https://knowledge-api.dev.jarvis.cx';
+  String baseUrl = dotenv.env['KNOWLEDGE_URL'] ?? "";
 
   Future<List<Bot>> fetchBots(String token) async {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};

@@ -1,19 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:aichat/core/models/UserToken.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
-  String baseUrl = 'https://auth-api.dev.jarvis.cx';
+  String baseUrl = dotenv.env['AUTH_URL'] ?? '';
 
   Future<UserToken?> signUpWithEmailAndPassword(
     String email,
     String password,
   ) async {
     var headers = {
-      'X-Stack-Access-Type': 'client',
-      'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
+      'X-Stack-Access-Type': dotenv.env['STACK_ACCESS_TYPE'] ?? 'client',
+      'X-Stack-Project-Id': dotenv.env['STACK_PROJECT_ID'] ?? '',
       'X-Stack-Publishable-Client-Key':
-          'pck_tqsy29b64a585km2g4wnpc57ypjprzzdch8xzpq0xhayr',
+          dotenv.env['STACK_CLIENT_KEY'] ?? '',
       'Content-Type': 'application/json',
     };
 
@@ -26,7 +27,7 @@ class AuthService {
       "email": email,
       "password": password,
       "verification_callback_url":
-          "https://auth.dev.jarvis.cx/handler/email-verification?after_auth_return_to=%2Fauth%2Fsignin%3Fclient_id%3Djarvis_chat%26redirect%3Dhttps%253A%252F%252Fchat.dev.jarvis.cx%252Fauth%252Foauth%252Fsuccess",
+          dotenv.env['VERIFICATION_CALLBACK_URL'] ?? '',
     });
 
     request.headers.addAll(headers);
@@ -56,10 +57,10 @@ class AuthService {
     String password,
   ) async {
     var headers = {
-      'X-Stack-Access-Type': 'client',
-      'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
+      'X-Stack-Access-Type': dotenv.env['STACK_ACCESS_TYPE'] ?? '',
+      'X-Stack-Project-Id': dotenv.env['STACK_PROJECT_ID'] ?? '',
       'X-Stack-Publishable-Client-Key':
-          'pck_tqsy29b64a585km2g4wnpc57ypjprzzdch8xzpq0xhayr',
+          dotenv.env['STACK_CLIENT_KEY'] ?? '',
       'Content-Type': 'application/json',
     };
 
@@ -94,10 +95,10 @@ class AuthService {
   Future<void> logOut(String token, String refreshToken) async {
     var headers = {
       'Authorization': 'Bearer $token',
-      'X-Stack-Access-Type': 'client',
-      'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
+      'X-Stack-Access-Type': dotenv.env['STACK_ACCESS_TYPE'] ?? '',
+      'X-Stack-Project-Id': dotenv.env['STACK_PROJECT_ID'] ?? '',
       'X-Stack-Publishable-Client-Key':
-          'pck_tqsy29b64a585km2g4wnpc57ypjprzzdch8xzpq0xhayr',
+          dotenv.env['STACK_CLIENT_KEY'] ?? '',
       'X-Stack-Refresh-Token': refreshToken,
       'Content-Type': 'application/json',
     };

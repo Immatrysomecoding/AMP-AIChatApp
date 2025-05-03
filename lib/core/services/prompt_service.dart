@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:aichat/core/models/Prompt.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class PromptService {
-  String baseUrl = 'https://api.dev.jarvis.cx';
+  String baseUrl = dotenv.env['CHAT_URL'] ?? '';
 
   Future<List<Prompt>> getPublicPrompts(String token) async {
     var headers = {

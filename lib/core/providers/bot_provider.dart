@@ -90,4 +90,12 @@ class BotProvider with ChangeNotifier{
     _isLoading = false;
     notifyListeners();
   }
+
+  Future<void> importKnowledgeToBot(String token, String botId, String knowledgeId) async {
+    _isLoading = true;
+    notifyListeners();
+    await _botService.importKnowledgeToBot(token, botId, knowledgeId);
+    _isLoading = false;
+    notifyListeners();
+  }
 }
