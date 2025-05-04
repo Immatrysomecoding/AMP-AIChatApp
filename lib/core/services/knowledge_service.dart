@@ -170,7 +170,7 @@ class KnowledgeService {
 
     http.StreamedResponse response = await request.send();
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 201) {
       print(await response.stream.bytesToString());
       print("Upload website succes");
     } else {
