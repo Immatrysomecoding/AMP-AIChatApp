@@ -1,8 +1,10 @@
 import 'package:aichat/core/providers/user_token_provider.dart';
+import 'package:aichat/widgets/confirm_remove_knowledge.dart';
 import 'package:flutter/material.dart';
 import 'package:aichat/core/models/Knowledge.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:aichat/widgets/bot_knowledge_list.dart';
 
 class UpdateBot extends StatefulWidget {
   const UpdateBot({
@@ -192,7 +194,45 @@ class _UpdateBotState extends State<UpdateBot> {
                                   trailing: IconButton(
                                     icon: const Icon(Icons.delete),
                                     onPressed: () {
-                                      // TODO: Add delete logic
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return ConfirmRemoveKnowledgeDialog(
+                                            onCancel:
+                                                () =>
+                                                    Navigator.of(context).pop(),
+                                            onConfirm: () async {
+                                              Navigator.of(
+                                                context,
+                                              ).pop(); // Close dialog
+
+                                              final botProvider =
+                                                  Provider.of<BotProvider>(
+                                                    context,
+                                                    listen: false,
+                                                  );
+                                              final tokenProvider = Provider.of<
+                                                UserTokenProvider
+                                              >(context, listen: false);
+                                              final token =
+                                                  tokenProvider
+                                                      .user
+                                                      ?.accessToken ??
+                                                  '';
+
+                                              if (token.isNotEmpty) {
+                                                await botProvider
+                                                    .deleteKnowledgeFromBot(
+                                                      token,
+                                                      widget.botId,
+                                                      knowledge.id,
+                                                    );
+                                                _loadKnowledge(); // ✅ Refresh list
+                                              }
+                                            },
+                                          );
+                                        },
+                                      );
                                     },
                                   ),
                                 );
@@ -201,7 +241,18 @@ class _UpdateBotState extends State<UpdateBot> {
                   ),
                   OutlinedButton.icon(
                     onPressed: () {
-                      // TODO: Add import logic
+                      showDialog(
+                        context: context,
+                        builder:
+                            (context) => Dialog(
+                              child: KnowledgeBaseList(
+                                botId: widget.botId,
+                                importedKnowledge: _importedKnowledge,
+                              ),
+                            ),
+                      ).then(
+                        (_) => _loadKnowledge(),
+                      ); // Reload knowledge when dialog closes
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('Add knowledge source'),
