@@ -4,6 +4,7 @@ import 'package:aichat/core/models/KnowledgeUnit.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http_parser/http_parser.dart';
 
 class KnowledgeService {
   String baseUrl = dotenv.env['KNOWLEDGE_URL'] ?? '';
@@ -64,7 +65,7 @@ class KnowledgeService {
       print("Create knowledge success");
       final responseBody = await response.stream.bytesToString();
       print("Response: $responseBody");
-      return ;
+      return;
     } else {
       print(response.reasonPhrase);
     }
@@ -179,6 +180,35 @@ class KnowledgeService {
     }
   }
 
+  String _getMimeType(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'pdf':
+        return 'application';
+      case 'doc':
+      case 'docx':
+        return 'application';
+      case 'txt':
+        return 'text';
+      default:
+        return 'application';
+    }
+  }
+
+  String _getSubMimeType(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'pdf':
+        return 'pdf';
+      case 'doc':
+        return 'msword';
+      case 'docx':
+        return 'vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'txt':
+        return 'plain';
+      default:
+        return 'octet-stream';
+    }
+  }
+
   Future<void> uploadLocalFileToKnowledge(
     String token,
     String knowledgeId,
@@ -189,36 +219,52 @@ class KnowledgeService {
     );
 
     var request = http.MultipartRequest('POST', uri)
-      ..headers.addAll({
-        'x-jarvis-guid': '',
-        'Authorization': 'Bearer $token',
-        // DO NOT manually set Content-Type here; MultipartRequest will handle it
-      });
+      ..headers.addAll({'Authorization': 'Bearer $token'});
 
-    // Add the file
-    // request.files.add(
-    //   http.MultipartFile.fromBytes(
-    //     'file', // Field name (must match your Java example)
-    //     file.bytes!, // PlatformFile gives you bytes
-    //     filename: file.name,
-    //     contentType: MediaType('application', 'octet-stream'), // generic type
-    //   ),
-    // );
+    // PlatformFile can be from file_picker
+    if (file.bytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file', // <-- must match @RequestParam("file")
+          file.bytes!,
+          filename: file.name,
+          contentType: MediaType(
+            _getMimeType(file.extension ?? ''),
+            _getSubMimeType(file.extension ?? ''),
+          ),
+        ),
+      );
+    } else if (file.path != null) {
+      // Fallback: load from path
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path!,
+          filename: file.name,
+          contentType: MediaType(
+            _getMimeType(file.extension ?? ''),
+            _getSubMimeType(file.extension ?? ''),
+          ),
+        ),
+      );
+    } else {
+      print('Invalid file: No data or path available.');
+      return;
+    }
 
     try {
       var streamedResponse = await request.send();
+      var responseBody = await streamedResponse.stream.bytesToString();
 
       if (streamedResponse.statusCode == 200) {
-        var responseString = await streamedResponse.stream.bytesToString();
-        print("Upload local file success: $responseString");
+        print("✅ Upload success: $responseBody");
       } else {
         print(
-          "Upload local file failed with status: ${streamedResponse.statusCode}",
+          "❌ Upload failed (${streamedResponse.statusCode}): $responseBody",
         );
-        print(await streamedResponse.stream.bytesToString());
       }
     } catch (e) {
-      print('Upload failed: $e');
+      print("❌ Upload error: $e");
     }
   }
 
@@ -257,9 +303,7 @@ class KnowledgeService {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse(
-        '$baseUrl/kb-core/v1/knowledge/$knowledgeId/google-drive',
-      ),
+      Uri.parse('$baseUrl/kb-core/v1/knowledge/$knowledgeId/google-drive'),
     );
 
     request.headers.addAll(headers);
