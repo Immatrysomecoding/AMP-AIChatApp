@@ -53,7 +53,10 @@ class _KnowledgeBaseListState extends State<KnowledgeBaseList> {
     if (!mounted) return;
     final token = _userToken;
     if (token.isNotEmpty) {
-      await Provider.of<KnowledgeProvider>(context, listen: false).fetchKnowledges(token);
+      await Provider.of<KnowledgeProvider>(
+        context,
+        listen: false,
+      ).fetchKnowledges(token);
     }
   }
 
@@ -81,7 +84,10 @@ class _KnowledgeBaseListState extends State<KnowledgeBaseList> {
     final token = _userToken;
     if (token.isEmpty) return;
 
-    final knowledgeProvider = Provider.of<KnowledgeProvider>(context, listen: false);
+    final knowledgeProvider = Provider.of<KnowledgeProvider>(
+      context,
+      listen: false,
+    );
     await knowledgeProvider.createKnowledge(token, name, description);
     await _loadKnowledge();
   }
@@ -89,76 +95,85 @@ class _KnowledgeBaseListState extends State<KnowledgeBaseList> {
   @override
   Widget build(BuildContext context) {
     final knowledgeProvider = Provider.of<KnowledgeProvider>(context);
-    final knowledgeList = knowledgeProvider.knowledges.where((k) {
-      final query = _searchController.text.toLowerCase();
-      return k.knowledgeName.toLowerCase().contains(query) ||
-          k.description.toLowerCase().contains(query);
-    }).toList();
+    final knowledgeList =
+        knowledgeProvider.knowledges.where((k) {
+          final query = _searchController.text.toLowerCase();
+          return k.knowledgeName.toLowerCase().contains(query) ||
+              k.description.toLowerCase().contains(query);
+        }).toList();
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      color: const Color(0xFFF7FBFF),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Knowledge Base",
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0D1C2E),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: "Search knowledge...",
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 16),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => CreateKnowledgeBaseDialog(
-                    onCancel: () => Navigator.of(context).pop(),
-                    onSave: (name, description) async {
-                      Navigator.of(context).pop(); // Close dialog
-                      await _createKnowledge(name, description);
-                    },
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text("Create Knowledge"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop(); // Navigate back
+          },
+        ),
+        title: const Text("Knowledge Base"),
+        backgroundColor: Colors.blue.shade600,
+        foregroundColor: Colors.white,
+      ),
+      body: Container(
+        padding: const EdgeInsets.all(24),
+        color: const Color(0xFFF7FBFF),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: "Search knowledge...",
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: knowledgeProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : knowledgeList.isEmpty
-                    ? const Center(child: Text("No knowledge found."))
-                    : ListView.builder(
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder:
+                        (context) => CreateKnowledgeBaseDialog(
+                          onCancel: () => Navigator.of(context).pop(),
+                          onSave: (name, description) async {
+                            Navigator.of(context).pop();
+                            await _createKnowledge(name, description);
+                          },
+                        ),
+                  );
+                },
+                icon: const Icon(Icons.add),
+                label: const Text("Create Knowledge"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade600,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child:
+                  knowledgeProvider.isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : knowledgeList.isEmpty
+                      ? const Center(child: Text("No knowledge found."))
+                      : ListView.builder(
                         itemCount: knowledgeList.length,
                         itemBuilder: (context, index) {
                           final knowledge = knowledgeList[index];
@@ -171,23 +186,26 @@ class _KnowledgeBaseListState extends State<KnowledgeBaseList> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            trailing: imported
-                                ? const Text(
-                                    "Imported",
-                                    style: TextStyle(color: Colors.grey),
-                                  )
-                                : Tooltip(
-                                    message: "Import the knowledge to bot",
-                                    child: IconButton(
-                                      icon: const Icon(Icons.add),
-                                      onPressed: () => _importKnowledge(knowledge),
+                            trailing:
+                                imported
+                                    ? const Text(
+                                      "Imported",
+                                      style: TextStyle(color: Colors.grey),
+                                    )
+                                    : Tooltip(
+                                      message: "Import the knowledge to bot",
+                                      child: IconButton(
+                                        icon: const Icon(Icons.add),
+                                        onPressed:
+                                            () => _importKnowledge(knowledge),
+                                      ),
                                     ),
-                                  ),
                           );
                         },
                       ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
