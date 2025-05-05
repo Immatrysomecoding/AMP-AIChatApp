@@ -105,6 +105,10 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                                 name,
                                 url,
                               );
+
+                              setState(() {
+                                _knowledgeUnitsFuture = _fetchKnowledgeUnits();
+                              });
                             },
                             onLocalFileImport: (file) {
                               final accessToken =
@@ -123,6 +127,10 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                                 widget.id,
                                 file,
                               );
+
+                              setState(() {
+                                _knowledgeUnitsFuture = _fetchKnowledgeUnits();
+                              });
                             },
                           ),
                     );

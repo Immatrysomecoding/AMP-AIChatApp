@@ -256,7 +256,7 @@ class KnowledgeService {
       var streamedResponse = await request.send();
       var responseBody = await streamedResponse.stream.bytesToString();
 
-      if (streamedResponse.statusCode == 200) {
+      if (streamedResponse.statusCode == 201) {
         print("✅ Upload success: $responseBody");
       } else {
         print(
