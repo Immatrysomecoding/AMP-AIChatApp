@@ -1,83 +1,71 @@
 class Bot {
-  String id;
-  String createdAt;
-  String updatedAt;
-  String createdBy;
-  String updatedBy;
-  String assistantName;
-  String openAiAssistantId;
-  String instructions;
-  String description;
-  String openAithreadId;
-  String deletedAt;
-  String openAivectorStoreId;
-  String openAiThreadIdPlay;
-  bool isDefault;
-  bool isFavorite;
-  String permissions;
-  String userId;
-  
- Bot({
+  final String id;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String? createdBy;
+  final String? updatedBy;
+  final String? deletedAt;
+  final String assistantName;
+  final String description;
+  final String instructions;
+  final Map<String, dynamic> config;
+  final String userId;
+  final bool isDefault;
+  final bool isFavorite;
+  final List<String> permissions;
+
+  Bot({
     required this.id,
     required this.createdAt,
+    required this.updatedAt,
+    this.createdBy,
+    this.updatedBy,
+    this.deletedAt,
     required this.assistantName,
-    required this.openAiAssistantId,
-    this.instructions = "",
-    this.description = "",
-    this.openAithreadId = "",
-    this.createdBy = "",
-    this.updatedBy = "",
-    this.updatedAt = "",
-    this.deletedAt = "",
-    this.openAivectorStoreId = "",
-    this.openAiThreadIdPlay = "",
-    this.isDefault = false,
-    this.isFavorite = false,
-    this.permissions = "",
-    this.userId = "",
+    required this.description,
+    required this.instructions,
+    required this.config,
+    required this.userId,
+    required this.isDefault,
+    required this.isFavorite,
+    required this.permissions,
   });
 
   factory Bot.fromJson(Map<String, dynamic> json) {
-  return Bot(
-    id: json['id'] ?? "",
-    createdAt: json['createdAt'] ?? "",
-    updatedAt: json['updatedAt'] ?? "",
-    createdBy: json['createdBy'] ?? "",
-    updatedBy: json['updatedBy'] ?? "",
-    assistantName: json['assistantName'] ?? "",
-    openAiAssistantId: json['openAiAssistantId'] ?? "", // fixed key
-    instructions: json['instructions'] ?? "",
-    description: json['description'] ?? "",
-    openAithreadId: json['openAiThreadId'] ?? "",       // fixed key
-    deletedAt: json['deletedAt'] ?? "",
-    openAivectorStoreId: json['openAiVectorStoreId'] ?? "", // fixed key
-    openAiThreadIdPlay: json['openAiThreadIdPlay'] ?? "",
-    isDefault: json['isDefault'] ?? false,
-    isFavorite: json['isFavorite'] ?? false,
-    permissions: (json['permissions'] ?? "").toString(),
-    userId: json['userId'] ?? "",
-  );
-}
+    return Bot(
+      id: json['id'],
+      createdAt: DateTime.parse(json['createdAt']),
+      updatedAt: DateTime.parse(json['updatedAt']),
+      createdBy: json['createdBy'],
+      updatedBy: json['updatedBy'],
+      deletedAt: json['deletedAt'],
+      assistantName: json['assistantName'] ?? '',
+      description: json['description'] ?? '',
+      instructions: json['instructions'] ?? '',
+      config: json['config'] ?? {},
+      userId: json['userId'],
+      isDefault: json['isDefault'] ?? false,
+      isFavorite: json['isFavorite'] ?? false,
+      permissions: List<String>.from(json['permissions'] ?? []),
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'createdAt': createdAt,
-      'updatedAt': updatedAt,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
       'createdBy': createdBy,
       'updatedBy': updatedBy,
-      'assistantName': assistantName,
-      'openAiAssistantId': openAiAssistantId,
-      'instructions': instructions,
-      'description': description,
-      'openAithreadId': openAithreadId,
       'deletedAt': deletedAt,
-      'openAivectorStoreId': openAivectorStoreId,
-      'openAiThreadIdPlay': openAiThreadIdPlay,
+      'assistantName': assistantName,
+      'description': description,
+      'instructions': instructions,
+      'config': config,
+      'userId': userId,
       'isDefault': isDefault,
       'isFavorite': isFavorite,
       'permissions': permissions,
-      'userId': userId,
     };
   }
 }

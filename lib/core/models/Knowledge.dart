@@ -1,41 +1,41 @@
 class Knowledge {
+  final String id;
   final String knowledgeName;
   final String description;
-  final String createdAt;
-  final String createdBy;
-  final String updatedAt;
-  final String updatedBy;
-  final String deletedAt;
-  final String id;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String? createdBy;
+  final String? updatedBy;
+  final String? deletedAt;
   final String userId;
   final int numUnits;
   final int totalSize;
 
   Knowledge({
-    required this.knowledgeName,
-    this.description = "",
-    this.createdAt = "",
-    this.updatedAt = "",
     required this.id,
-    this.createdBy = "",
-    this.updatedBy = "",
-    this.deletedAt = "",
+    required this.knowledgeName,
+    required this.description,
+    required this.createdAt,
+    required this.updatedAt,
+    this.createdBy,
+    this.updatedBy,
+    this.deletedAt,
     required this.userId,
-    this.numUnits = 0,
-    this.totalSize = 0,
+    required this.numUnits,
+    required this.totalSize,
   });
 
   factory Knowledge.fromJson(Map<String, dynamic> json) {
     return Knowledge(
-      knowledgeName: json['knowledgeName'] ?? "",
-      description: json['description'] ?? "",
-      createdAt: json['createdAt'] ?? "",
-      updatedAt: json['updatedAt'] ?? "",
-      id: json['id'] ?? "",
-      createdBy: json['createdBy'] ?? "",
-      updatedBy: json['updatedBy'] ?? "",
-      deletedAt: json['deletedAt'] ?? "",
-      userId: json['userId'] ?? "",
+      id: json['id'],
+      knowledgeName: json['knowledgeName'] ?? '',
+      description: json['description'] ?? '',
+      createdAt: DateTime.parse(json['createdAt']),
+      updatedAt: DateTime.parse(json['updatedAt']),
+      createdBy: json['createdBy'],
+      updatedBy: json['updatedBy'],
+      deletedAt: json['deletedAt'],
+      userId: json['userId'],
       numUnits: json['numUnits'] ?? 0,
       totalSize: json['totalSize'] ?? 0,
     );
@@ -43,11 +43,11 @@ class Knowledge {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'knowledgeName': knowledgeName,
       'description': description,
-      'createdAt': createdAt,
-      'updatedAt': updatedAt,
-      'id': id, // ✅ corrected key
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
       'createdBy': createdBy,
       'updatedBy': updatedBy,
       'deletedAt': deletedAt,
