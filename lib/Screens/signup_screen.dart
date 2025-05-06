@@ -30,6 +30,19 @@ class _SignupScreenState extends State<SignupScreen> {
       ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
       return;
     }
+    else if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+      return;
+    }
+    else if (_passwordController.text.length < 8) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Password too short, must be at least 8 characters")));
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -113,6 +126,7 @@ class _SignupScreenState extends State<SignupScreen> {
     } catch (e) {
       print("Error during sign up process: $e");
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Error: $e")));

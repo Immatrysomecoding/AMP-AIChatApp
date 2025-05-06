@@ -23,7 +23,6 @@ class UserTokenProvider with ChangeNotifier {
 
   Future<bool> signUp(String email, String password) async {
     setInitializing(true);
-
     try {
       model.UserToken? newUser = await _authService.signUpWithEmailAndPassword(
         email,
@@ -32,16 +31,15 @@ class UserTokenProvider with ChangeNotifier {
 
       if (newUser != null) {
         setUser(newUser);
-        setInitializing(false);
         return true;
       }
 
-      setInitializing(false);
       return false;
     } catch (e) {
       print("Error during signup: $e");
-      setInitializing(false);
       return false;
+    } finally {
+      setInitializing(false);
     }
   }
 

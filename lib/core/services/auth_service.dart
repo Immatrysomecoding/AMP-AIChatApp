@@ -13,8 +13,7 @@ class AuthService {
     var headers = {
       'X-Stack-Access-Type': dotenv.env['STACK_ACCESS_TYPE'] ?? 'client',
       'X-Stack-Project-Id': dotenv.env['STACK_PROJECT_ID'] ?? '',
-      'X-Stack-Publishable-Client-Key':
-          dotenv.env['STACK_CLIENT_KEY'] ?? '',
+      'X-Stack-Publishable-Client-Key': dotenv.env['STACK_CLIENT_KEY'] ?? '',
       'Content-Type': 'application/json',
     };
 
@@ -37,18 +36,14 @@ class AuthService {
       var responseBody = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
-        print("✅ Sign-up successful");
-        print("🔁 Response: $responseBody");
         var jsonResponse = json.decode(responseBody);
         return UserToken.fromJson(jsonResponse);
       } else {
-        print("❌ Sign-up failed: ${response.statusCode}");
-        print("🔴 Server response: $responseBody");
-        return null;
+        var error = json.decode(responseBody);
+        throw error['error'] ?? 'Sign-up failed';
       }
     } catch (e) {
-      print("⚠️ Sign-up error: $e");
-      return null;
+      throw 'Sign-up error: $e';
     }
   }
 
@@ -59,8 +54,7 @@ class AuthService {
     var headers = {
       'X-Stack-Access-Type': dotenv.env['STACK_ACCESS_TYPE'] ?? '',
       'X-Stack-Project-Id': dotenv.env['STACK_PROJECT_ID'] ?? '',
-      'X-Stack-Publishable-Client-Key':
-          dotenv.env['STACK_CLIENT_KEY'] ?? '',
+      'X-Stack-Publishable-Client-Key': dotenv.env['STACK_CLIENT_KEY'] ?? '',
       'Content-Type': 'application/json',
     };
 
@@ -97,8 +91,7 @@ class AuthService {
       'Authorization': 'Bearer $token',
       'X-Stack-Access-Type': dotenv.env['STACK_ACCESS_TYPE'] ?? '',
       'X-Stack-Project-Id': dotenv.env['STACK_PROJECT_ID'] ?? '',
-      'X-Stack-Publishable-Client-Key':
-          dotenv.env['STACK_CLIENT_KEY'] ?? '',
+      'X-Stack-Publishable-Client-Key': dotenv.env['STACK_CLIENT_KEY'] ?? '',
       'X-Stack-Refresh-Token': refreshToken,
       'Content-Type': 'application/json',
     };
