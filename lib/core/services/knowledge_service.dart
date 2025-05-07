@@ -127,19 +127,21 @@ class KnowledgeService {
     var request = http.Request(
       'GET',
       Uri.parse(
-        '$baseUrl/kb-core/v1/knowledge/$id/units?q&order=DESC&order_field=createdAt&offset=&limit=20',
+        '$baseUrl/kb-core/v1/knowledge/$id/datasources?q&order=DESC&order_field=createdAt&offset=&limit=20',
       ),
     );
 
     request.headers.addAll(headers);
 
     http.StreamedResponse response = await request.send();
+    print("Status code:$response.statusCode");
 
     if (response.statusCode == 200) {
       final responseBody = await response.stream.bytesToString();
-      print(responseBody);
+      print("units OF KNOWLEDGE");
       final decoded = json.decode(responseBody);
       final dataList = decoded['data'] ?? [];
+      print("Data list: $dataList");
       return dataList
           .map<KnowledgeUnit>((item) => KnowledgeUnit.fromJson(item))
           .toList();
@@ -175,96 +177,136 @@ class KnowledgeService {
       print(await response.stream.bytesToString());
       print("Upload website succes");
     } else {
-      print(response.reasonPhrase);
+      final errorBody = await response.stream.bytesToString();
       print("Upload website failed");
+      print("Status code: ${response.statusCode}");
+      print("Reason: ${response.reasonPhrase}");
+      print("Error body: $errorBody");
     }
   }
 
-  String _getMimeType(String ext) {
-    switch (ext.toLowerCase()) {
-      case 'pdf':
-        return 'application';
-      case 'doc':
-      case 'docx':
-        return 'application';
-      case 'txt':
-        return 'text';
-      default:
-        return 'application';
-    }
-  }
+  // String _getMimeType(String ext) {
+  //   switch (ext.toLowerCase()) {
+  //     case 'pdf':
+  //       return 'application';
+  //     case 'doc':
+  //     case 'docx':
+  //       return 'application';
+  //     case 'txt':
+  //       return 'text';
+  //     default:
+  //       return 'application';
+  //   }
+  // }
 
-  String _getSubMimeType(String ext) {
-    switch (ext.toLowerCase()) {
-      case 'pdf':
-        return 'pdf';
-      case 'doc':
-        return 'msword';
-      case 'docx':
-        return 'vnd.openxmlformats-officedocument.wordprocessingml.document';
-      case 'txt':
-        return 'plain';
-      default:
-        return 'octet-stream';
-    }
-  }
+  // String _getSubMimeType(String ext) {
+  //   switch (ext.toLowerCase()) {
+  //     case 'pdf':
+  //       return 'pdf';
+  //     case 'doc':
+  //       return 'msword';
+  //     case 'docx':
+  //       return 'vnd.openxmlformats-officedocument.wordprocessingml.document';
+  //     case 'txt':
+  //       return 'plain';
+  //     default:
+  //       return 'octet-stream';
+  //   }
+  // }
 
-  Future<void> uploadLocalFileToKnowledge(
-    String token,
-    String knowledgeId,
-    PlatformFile file,
-  ) async {
-    var uri = Uri.parse(
-      '$baseUrl/kb-core/v1/knowledge/$knowledgeId/local-file',
-    );
+  Future<void> uploadLocalFileToKnowledge({
+    required String token,
+    required String knowledgeId,
+    required PlatformFile file,
+  }) async {
+    // Step 1: Upload file to get fileId
+    final uploadUri = Uri.parse('$baseUrl/kb-core/v1/knowledge/files');
+    final uploadRequest = http.MultipartRequest('POST', uploadUri);
+    uploadRequest.headers.addAll({'Authorization': 'Bearer $token'});
 
-    var request = http.MultipartRequest('POST', uri)
-      ..headers.addAll({'Authorization': 'Bearer $token'});
+    print("Here");
 
-    // PlatformFile can be from file_picker
     if (file.bytes != null) {
-      request.files.add(
+      uploadRequest.files.add(
         http.MultipartFile.fromBytes(
-          'file', // <-- must match @RequestParam("file")
+          'files',
           file.bytes!,
           filename: file.name,
-          contentType: MediaType(
-            _getMimeType(file.extension ?? ''),
-            _getSubMimeType(file.extension ?? ''),
-          ),
+          contentType: MediaType('application', 'octet-stream'),
         ),
       );
     } else if (file.path != null) {
-      // Fallback: load from path
-      request.files.add(
+      uploadRequest.files.add(
         await http.MultipartFile.fromPath(
-          'file',
+          'files',
           file.path!,
           filename: file.name,
-          contentType: MediaType(
-            _getMimeType(file.extension ?? ''),
-            _getSubMimeType(file.extension ?? ''),
-          ),
+          contentType: MediaType('application', 'octet-stream'),
         ),
       );
     } else {
-      print('Invalid file: No data or path available.');
+      print('❌ Invalid file: no bytes or path.');
+      return;
+    }
+    print("File upload success");
+    print("File name: ${file.name}");
+    print("File path: ${file.path}");
+    print("File bytes: ${file.bytes}");
+    print("File size: ${file.size}");
+    print("File extension: ${file.extension}");
+    final uploadResponse = await uploadRequest.send();
+    final uploadBody = await uploadResponse.stream.bytesToString();
+
+    print("Upload response: $uploadBody");
+    print("Upload status code: ${uploadResponse.statusCode}");
+
+    final decoded = json.decode(uploadBody);
+    print('🟡 Decoded response: $decoded');
+
+    final fileList = decoded['files'];
+    if (fileList is! List || fileList.isEmpty || fileList[0]['id'] == null) {
+      print("❌ Invalid response structure or missing file ID.");
       return;
     }
 
-    try {
-      var streamedResponse = await request.send();
-      var responseBody = await streamedResponse.stream.bytesToString();
+    final fileId = fileList[0]['id'];
+    print("✅ File uploaded. ID: $fileId");
 
-      if (streamedResponse.statusCode == 201) {
-        print("✅ Upload success: $responseBody");
-      } else {
-        print(
-          "❌ Upload failed (${streamedResponse.statusCode}): $responseBody",
-        );
-      }
-    } catch (e) {
-      print("❌ Upload error: $e");
+    // Step 2: Register uploaded file as knowledge datasource
+    final registerUri = Uri.parse(
+      '$baseUrl/kb-core/v1/knowledge/$knowledgeId/datasources',
+    );
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+      'x-jarvis-guid': '', // optional, include if needed
+    };
+
+    final body = json.encode({
+      "datasources": [
+        {
+          "type": "local_file",
+          "name": file.name,
+          "credentials": {"file": fileId},
+        },
+      ],
+    });
+
+    final request =
+        http.Request('POST', registerUri)
+          ..headers.addAll(headers)
+          ..body = body;
+
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+
+    if (response.statusCode == 201) {
+      print("✅ File linked to knowledge base.");
+      print(responseBody);
+    } else {
+      print("❌ Linking failed");
+      print("Status code: ${response.statusCode}");
+      print("Error body: $responseBody");
     }
   }
 
@@ -272,7 +314,7 @@ class KnowledgeService {
     String token,
     String knowledgeId,
     String unitName,
-    String slackWorkSpace,
+    String slackBotToken,
   ) async {
     var headers = {
       'x-jarvis-guid': '',
@@ -281,21 +323,29 @@ class KnowledgeService {
     };
     var request = http.Request(
       'POST',
-      Uri.parse('$baseUrl/kb-core/v1/knowledge/$knowledgeId/slack'),
+      Uri.parse('$baseUrl/kb-core/v1/knowledge/$knowledgeId/datasources'),
     );
     request.body = json.encode({
-      "unitName": unitName,
-      "slackWorkspace": slackWorkSpace,
-      "slackBotToken": slackBotToken,
+      "datasources": [
+        {
+          "type": "slack",
+          "name": unitName,
+          "credentials": {"token": slackBotToken},
+        },
+      ],
     });
     request.headers.addAll(headers);
 
     http.StreamedResponse response = await request.send();
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 201) {
       print(await response.stream.bytesToString());
+      print("Upload slack success");
     } else {
-      print(response.reasonPhrase);
+      final errorBody = await response.stream.bytesToString();
+      print("Upload slack failed");
+      print("Status code: ${response.statusCode}");
+      print("Error body: $errorBody");
     }
   }
 
@@ -314,6 +364,41 @@ class KnowledgeService {
       print(await response.stream.bytesToString());
     } else {
       print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> toggleKnowledgeUnitStatus(
+    String token,
+    String knowledgeId,
+    String unitId,
+    bool unitStatus,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+    var request = http.Request(
+      'PATCH',
+      Uri.parse(
+        '$baseUrl/kb-core/v1/knowledge/$knowledgeId/datasources/$unitId',
+      ),
+    );
+    // might get rid of this later
+    request.body = json.encode({
+      "status": !unitStatus,
+    });
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+      print("Toggle knowledge unit status success");
+    } else {
+      print(response.reasonPhrase);
+      print(response.statusCode);
+      print("Toggle knowledge unit status failed");
     }
   }
 }

@@ -1,51 +1,71 @@
 class KnowledgeUnit {
-  String createdAt;
-  String createdBy;
-  String updatedAt;
-  String updatedBy;
-  String knowledgeId;
-  String userId;
-  String id;
-  bool status;
-  String name;
+  final String id;
+  final String knowledgeId;
+  final String? createdBy;
+  final String? updatedBy;
+  final String? deletedAt;
+  final String userId;
+  final String createdAt;
+  final String updatedAt;
+  final bool status;
+  final String name;
+  final double size;
+  final String type;
+  final String datasourceId;
+  final Map<String, dynamic> metadata;
 
   KnowledgeUnit({
-    this.createdAt = "",
-    this.createdBy = "",
-    this.updatedAt = "",
-    this.updatedBy = "",
+    required this.id,
     required this.knowledgeId,
     required this.userId,
-    required this.id,
-    this.status = false,
-    this.name = "",
+    required this.createdAt,
+    required this.updatedAt,
+    required this.status,
+    required this.name,
+    required this.size,
+    required this.type,
+    required this.datasourceId,
+    required this.metadata,
+    this.createdBy,
+    this.updatedBy,
+    this.deletedAt,
   });
 
   factory KnowledgeUnit.fromJson(Map<String, dynamic> json) {
     return KnowledgeUnit(
-      createdAt: json['createdAt'] ?? "",
-      createdBy: json['createdBy'] ?? "",
-      updatedAt: json['updatedAt'] ?? "",
-      updatedBy: json['updatedBy'] ?? "",
-      knowledgeId: json['knowledgeId'] ?? "",
-      userId: json['userId'] ?? "",
-      id: json['id'] ?? "",
+      id: json['id'] ?? '',
+      knowledgeId: json['knowledgeId'] ?? '',
+      userId: json['userId'] ?? '',
+      createdAt: json['createdAt'] ?? '',
+      updatedAt: json['updatedAt'] ?? '',
+      createdBy: json['createdBy'],
+      updatedBy: json['updatedBy'],
+      deletedAt: json['deletedAt'],
       status: json['status'] ?? false,
-      name: json['name'] ?? "",
+      name: json['name'] ?? '',
+      size: json['size'] ?? 0,
+      type: json['type'] ?? '',
+      datasourceId: json['datasourceId'] ?? '',
+      metadata: json['metadata'] ?? {},
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'createdAt': createdAt,
-      'createdBy': createdBy,
-      'updatedAt': updatedAt,
-      'updatedBy': updatedBy,
+      'id': id,
       'knowledgeId': knowledgeId,
       'userId': userId,
-      'id': id,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+      'createdBy': createdBy,
+      'updatedBy': updatedBy,
+      'deletedAt': deletedAt,
       'status': status,
       'name': name,
+      'size': size,
+      'type': type,
+      'datasourceId': datasourceId,
+      'metadata': metadata,
     };
   }
 }

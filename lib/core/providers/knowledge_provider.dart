@@ -103,9 +103,9 @@ class KnowledgeProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     await _knowledgeService.uploadLocalFileToKnowledge(
-      token,
-      knowledgeId,
-      file,
+      token: token,
+      knowledgeId: knowledgeId,
+      file: file,
     );
     _isLoading = false;
     notifyListeners();
@@ -124,6 +124,19 @@ class KnowledgeProvider with ChangeNotifier {
       knowledgeId,
       unitName,
       slackToken,
+    );
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> toggleKnowledgeUnitStatus(String token, String knowledgeId, String unitId, bool unitStatus) async {
+    _isLoading = true;
+    notifyListeners();
+    await _knowledgeService.toggleKnowledgeUnitStatus(
+      token,
+      knowledgeId,
+      unitId,
+      unitStatus,
     );
     _isLoading = false;
     notifyListeners();

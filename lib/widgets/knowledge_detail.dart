@@ -193,9 +193,34 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                         filteredUnits
                             .map(
                               (unit) => KnowledgeUnitCard(
-                                fileName: unit.name,
-                                fileSize: "Unknown Size",
+                                unitName: unit.name,
+                                unitSize: unit.size,
+                                type: unit.type,
                                 isActive: unit.status,
+                                knowledgeId: widget.id,
+                                unitId: unit.id,
+                                onStatusToggled: () async {
+                                  final token =
+                                      Provider.of<UserTokenProvider>(
+                                        context,
+                                        listen: false,
+                                      ).user?.accessToken ??
+                                      '';
+                                  await Provider.of<KnowledgeProvider>(
+                                    context,
+                                    listen: false,
+                                  ).toggleKnowledgeUnitStatus(
+                                    token,
+                                    widget.id,
+                                    unit.id,
+                                    unit.status
+                                  );
+
+                                  setState(() {
+                                    _knowledgeUnitsFuture =
+                                        _fetchKnowledgeUnits();
+                                  });
+                                },
                               ),
                             )
                             .toList(),
@@ -211,15 +236,23 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
 }
 
 class KnowledgeUnitCard extends StatelessWidget {
-  final String fileName;
-  final String fileSize;
+  final String unitName;
+  final double unitSize;
+  final String type;
   final bool isActive;
+  final String knowledgeId;
+  final String unitId;
+  final VoidCallback onStatusToggled;
 
   const KnowledgeUnitCard({
     super.key,
-    required this.fileName,
-    required this.fileSize,
+    required this.unitName,
+    required this.unitSize,
+    required this.type,
     required this.isActive,
+    required this.knowledgeId,
+    required this.unitId,
+    required this.onStatusToggled,
   });
 
   @override
@@ -227,7 +260,7 @@ class KnowledgeUnitCard extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.insert_drive_file),
-        title: Text(fileName),
+        title: Text(unitName),
         subtitle: Row(
           children: [
             Icon(
@@ -236,13 +269,18 @@ class KnowledgeUnitCard extends StatelessWidget {
               color: isActive ? Colors.green : Colors.red,
             ),
             const SizedBox(width: 4),
-            Text(fileSize),
+            Text(unitSize.toString()),
           ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Switch(value: isActive, onChanged: (value) {}),
+            Switch(
+              value: isActive,
+              onChanged: (_) async {
+                onStatusToggled(); // trigger callback
+              },
+            ),
             IconButton(icon: const Icon(Icons.delete), onPressed: () {}),
           ],
         ),
