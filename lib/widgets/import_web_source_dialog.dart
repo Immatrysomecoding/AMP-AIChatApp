@@ -19,32 +19,27 @@ class _WebsiteImportDialogState extends State<WebsiteImportDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Import Web Source',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 400,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Title
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Import Web Source',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Name Field
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(
@@ -54,8 +49,6 @@ class _WebsiteImportDialogState extends State<WebsiteImportDialog> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
-
-            // Web URL Field
             TextField(
               controller: _urlController,
               decoration: const InputDecoration(
@@ -65,8 +58,6 @@ class _WebsiteImportDialogState extends State<WebsiteImportDialog> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 24),
-
-            // Limitations box
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -87,45 +78,27 @@ class _WebsiteImportDialogState extends State<WebsiteImportDialog> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Action buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Back'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed:
-                      isFormValid
-                          ? () async {
-                            final name = _nameController.text.trim();
-                            final url = _urlController.text.trim();
-
-                            await widget.onSubmit?.call(name, url);
-
-                            if (context.mounted) {
-                              Navigator.of(context).pop();
-                            }
-                          }
-                          : null,
-
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        isFormValid
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey.shade300,
-                  ),
-                  child: const Text('Import'),
-                ),
-              ],
-            ),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Back'),
+        ),
+        FilledButton(
+          onPressed:
+              isFormValid
+                  ? () async {
+                    final name = _nameController.text.trim();
+                    final url = _urlController.text.trim();
+                    await widget.onSubmit?.call(name, url);
+                    if (context.mounted) Navigator.of(context).pop();
+                  }
+                  : null,
+          child: const Text('Import'),
+        ),
+      ],
     );
   }
 }
