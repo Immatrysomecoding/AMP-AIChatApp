@@ -110,4 +110,22 @@ class KnowledgeProvider with ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+  Future<void> uploadSlackToKnowledge(
+    String token,
+    String knowledgeId,
+    String unitName,
+    String slackToken,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+    await _knowledgeService.uploadDataFromSlack(
+      token,
+      knowledgeId,
+      unitName,
+      slackToken,
+    );
+    _isLoading = false;
+    notifyListeners();
+  }
 }

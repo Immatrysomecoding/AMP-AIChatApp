@@ -1,3 +1,4 @@
+import 'package:aichat/widgets/import_slack_source_dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:aichat/widgets/import_web_source_dialog.dart';
@@ -8,10 +9,12 @@ class KnowledgeSourceDialog extends StatefulWidget {
     super.key,
     this.onWebsiteSave,
     this.onLocalFileImport,
+    this.onSlackSave,
   });
 
   final Function(String, String)? onWebsiteSave;
   final Function(PlatformFile)? onLocalFileImport;
+  final Function(String, String)? onSlackSave;
 
   @override
   State<KnowledgeSourceDialog> createState() => _KnowledgeSourceDialogState();
@@ -89,6 +92,18 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
                       );
                     },
                   ),
+                  _buildActiveTile(icon: Icons.chat, title: 'Slack', subtitle: "Connect to Slack Workspace", onTap: () {
+                    Navigator.of(context).pop();
+                    showDialog(
+                      context: context,
+                      builder: (context) => SlackImportDialog(
+                        onSubmit: (name, slackToken) {
+                          widget.onSlackSave?.call(name, slackToken);
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    );
+                  }),
                   const Divider(height: 1),
                   _buildComingSoonTile(
                     icon: Icons.cloud,
@@ -102,7 +117,6 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
                     icon: Icons.code_off,
                     title: 'Gitlab Repository',
                   ),
-                  _buildComingSoonTile(icon: Icons.chat, title: 'Slack'),
                   _buildComingSoonTile(
                     icon: Icons.workspaces_outline,
                     title: 'Confluence',

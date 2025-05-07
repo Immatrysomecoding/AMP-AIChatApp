@@ -132,6 +132,28 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                                 _knowledgeUnitsFuture = _fetchKnowledgeUnits();
                               });
                             },
+                            onSlackSave: (name, slackToken) {
+                              final accessToken =
+                                  Provider.of<UserTokenProvider>(
+                                    safeContext,
+                                    listen: false,
+                                  ).user?.accessToken ??
+                                  '';
+
+                              Provider.of<KnowledgeProvider>(
+                                safeContext,
+                                listen: false,
+                              ).uploadSlackToKnowledge(
+                                accessToken,
+                                widget.id,
+                                name,
+                                slackToken,
+                              );
+
+                              setState(() {
+                                _knowledgeUnitsFuture = _fetchKnowledgeUnits();
+                              });
+                            },
                           ),
                     );
                   },
