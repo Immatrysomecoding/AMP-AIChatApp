@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
-class ConfirmRemoveKnowledgeDialog extends StatelessWidget {
+class ConfirmRemoveDialog extends StatelessWidget {
+  final String title;
+  final String content;
   final VoidCallback onCancel;
   final VoidCallback onConfirm;
 
-  const ConfirmRemoveKnowledgeDialog({
+  const ConfirmRemoveDialog({
     super.key,
+    required this.title,
+    required this.content,
     required this.onCancel,
     required this.onConfirm,
   });
@@ -13,8 +17,8 @@ class ConfirmRemoveKnowledgeDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Confirm Removal"),
-      content: const Text("Are you sure you want to remove this knowledge from this bot?"),
+      title: Text(title),
+      content: Text(content),
       actions: [
         TextButton(
           onPressed: onCancel,

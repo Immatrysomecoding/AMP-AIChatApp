@@ -1,5 +1,5 @@
 import 'package:aichat/core/providers/user_token_provider.dart';
-import 'package:aichat/widgets/confirm_remove_knowledge.dart';
+import 'package:aichat/widgets/confirm_removal_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:aichat/core/models/Knowledge.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
@@ -197,7 +197,9 @@ class _UpdateBotState extends State<UpdateBot> {
                                       showDialog(
                                         context: context,
                                         builder: (context) {
-                                          return ConfirmRemoveKnowledgeDialog(
+                                          return ConfirmRemoveDialog(
+                                            title: 'Remove Knowledge',
+                                            content: "Are you sure you want to remove this knowledge source?",
                                             onCancel:
                                                 () =>
                                                     Navigator.of(context).pop(),

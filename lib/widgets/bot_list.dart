@@ -1,5 +1,6 @@
 import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
+import 'package:aichat/widgets/confirm_removal_dialog.dart';
 import 'package:aichat/widgets/update_bot.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -75,9 +76,24 @@ class _BotListState extends State<BotList> {
     await _loadBots();
   }
 
+  void _confirmAndDeleteBot(String botId) {
+  showDialog(
+    context: context,
+    builder: (context) => ConfirmRemoveDialog(
+      title: "Confirm Bot Deletion",
+      content: "Are you sure you want to remove this bot?",
+      onCancel: () => Navigator.of(context).pop(),
+      onConfirm: () {
+        Navigator.of(context).pop(); // close dialog
+        _deleteBot(botId);           // perform deletion
+      },
+    ),
+  );
+}
+
+
   void _deleteBot(String botId) async {
     String accessToken = getUserToken();
-    print(botId);
 
     final BotProvider botProvider = Provider.of<BotProvider>(
       context,
@@ -265,7 +281,7 @@ class _BotListState extends State<BotList> {
                                   _toggleFavoriteBot(bot.id);
                                 },
                                 onDelete: () {
-                                  _deleteBot(bot.id);
+                                  _confirmAndDeleteBot(bot.id);
                                 },
                                 onChat: () {
                                   Navigator.pushNamed(context, '/chat');
