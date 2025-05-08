@@ -1,4 +1,5 @@
 import 'package:aichat/widgets/add_knowledge_source.dart';
+import 'package:aichat/widgets/confirm_removal_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -213,13 +214,68 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                                     token,
                                     widget.id,
                                     unit.id,
-                                    unit.status
+                                    unit.status,
                                   );
 
                                   setState(() {
                                     _knowledgeUnitsFuture =
                                         _fetchKnowledgeUnits();
                                   });
+                                },
+                                onDelete: () {
+                                  showDialog(
+                                    context: context,
+                                    builder:
+                                        (_) => ConfirmRemoveDialog(
+                                          title: 'Remove Knowledge Unit',
+                                          content:
+                                              'Are you sure you want to remove this knowledge unit?',
+                                          onCancel: () {
+                                            Navigator.of(
+                                              context,
+                                            ).pop(); // Dismiss the dialog
+                                          },
+                                          onConfirm: () async {
+                                            Navigator.of(
+                                              context,
+                                            ).pop(); // Close the dialog first
+
+                                            final token =
+                                                Provider.of<UserTokenProvider>(
+                                                  context,
+                                                  listen: false,
+                                                ).user?.accessToken ??
+                                                '';
+
+                                            await Provider.of<
+                                              KnowledgeProvider
+                                            >(
+                                              context,
+                                              listen: false,
+                                            ).deleteKnowledgeUnit(
+                                              token,
+                                              widget.id,
+                                              unit.id,
+                                            );
+
+                                            setState(() {
+                                              _knowledgeUnitsFuture =
+                                                  _fetchKnowledgeUnits();
+                                            });
+
+                                            // Optionally show a snackbar or toast:
+                                            // ScaffoldMessenger.of(
+                                            //   context,
+                                            // ).showSnackBar(
+                                            //   const SnackBar(
+                                            //     content: Text(
+                                            //       'Knowledge unit removed',
+                                            //     ),
+                                            //   ),
+                                            // );
+                                          },
+                                        ),
+                                  );
                                 },
                               ),
                             )
@@ -243,6 +299,7 @@ class KnowledgeUnitCard extends StatelessWidget {
   final String knowledgeId;
   final String unitId;
   final VoidCallback onStatusToggled;
+  final VoidCallback onDelete;
 
   const KnowledgeUnitCard({
     super.key,
@@ -253,6 +310,7 @@ class KnowledgeUnitCard extends StatelessWidget {
     required this.knowledgeId,
     required this.unitId,
     required this.onStatusToggled,
+    required this.onDelete,
   });
 
   @override
@@ -281,7 +339,7 @@ class KnowledgeUnitCard extends StatelessWidget {
                 onStatusToggled(); // trigger callback
               },
             ),
-            IconButton(icon: const Icon(Icons.delete), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.delete), onPressed: onDelete),
           ],
         ),
       ),

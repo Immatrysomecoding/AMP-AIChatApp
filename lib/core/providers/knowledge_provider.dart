@@ -141,4 +141,16 @@ class KnowledgeProvider with ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+  Future<void> deleteKnowledgeUnit(String token, String knowledgeId, String unitId) async {
+    _isLoading = true;
+    notifyListeners();
+    await _knowledgeService.deleteKnowledgeUnit(
+      token,
+      knowledgeId,
+      unitId,
+    );
+    _isLoading = false;
+    notifyListeners();
+  }
 }

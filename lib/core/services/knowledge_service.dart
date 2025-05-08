@@ -401,4 +401,31 @@ class KnowledgeService {
       print("Toggle knowledge unit status failed");
     }
   }
+
+  Future<void> deleteKnowledgeUnit(String token, String knowledgeId, String unitId) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    var request = http.Request(
+      'DELETE',
+      Uri.parse(
+        '$baseUrl/kb-core/v1/knowledge/$knowledgeId/datasources/$unitId',
+      ),
+    );
+
+    request.headers.addAll(headers);
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 204) {
+      print(await response.stream.bytesToString());
+      print("Delete knowledge unit success");
+    } else {
+      print(response.reasonPhrase);
+      print(response.statusCode);
+      print("Delete knowledge unit status failed");
+    }
+  }
 }
