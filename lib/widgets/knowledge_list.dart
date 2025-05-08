@@ -1,6 +1,7 @@
 import 'package:aichat/core/models/Knowledge.dart';
 import 'package:aichat/core/providers/knowledge_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
+import 'package:aichat/widgets/confirm_removal_dialog.dart';
 import 'package:aichat/widgets/update_knowledge_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -103,6 +104,26 @@ class _KnowledgeListState extends State<KnowledgeList> {
     }
   }
 
+  void _confirmAndDeleteKnowledge(String knowledgeId) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return ConfirmRemoveDialog(
+        title: "Delete Knowledge",
+        content: "Are you sure you want to delete this knowledge?",
+        onCancel: () {
+          Navigator.of(context).pop(); // Close dialog
+        },
+        onConfirm: () {
+          Navigator.of(context).pop(); // Close dialog before deleting
+          _deleteKnowledge(knowledgeId);
+        },
+      );
+    },
+  );
+}
+
+
   void _deleteKnowledge(String knowledgeId) {
     final knowledgeProvider = Provider.of<KnowledgeProvider>(
       context,
@@ -114,6 +135,9 @@ class _KnowledgeListState extends State<KnowledgeList> {
         _loadKnowledge();
       });
     }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Knowledge deleted successfully')));
   }
 
   @override
@@ -220,7 +244,7 @@ class _KnowledgeListState extends State<KnowledgeList> {
                               );
                             },
                             onDelete: () {
-                              _deleteKnowledge(knowledge.id);
+                              _confirmAndDeleteKnowledge(knowledge.id);
                             },
                             // onTap: () {
                             //   Navigator.of(context).pushNamed(

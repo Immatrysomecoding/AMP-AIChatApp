@@ -77,20 +77,20 @@ class _BotListState extends State<BotList> {
   }
 
   void _confirmAndDeleteBot(String botId) {
-  showDialog(
-    context: context,
-    builder: (context) => ConfirmRemoveDialog(
-      title: "Confirm Bot Deletion",
-      content: "Are you sure you want to remove this bot?",
-      onCancel: () => Navigator.of(context).pop(),
-      onConfirm: () {
-        Navigator.of(context).pop(); // close dialog
-        _deleteBot(botId);           // perform deletion
-      },
-    ),
-  );
-}
-
+    showDialog(
+      context: context,
+      builder:
+          (context) => ConfirmRemoveDialog(
+            title: "Confirm Bot Deletion",
+            content: "Are you sure you want to remove this bot?",
+            onCancel: () => Navigator.of(context).pop(),
+            onConfirm: () {
+              Navigator.of(context).pop(); // close dialog
+              _deleteBot(botId); // perform deletion
+            },
+          ),
+    );
+  }
 
   void _deleteBot(String botId) async {
     String accessToken = getUserToken();
@@ -101,6 +101,9 @@ class _BotListState extends State<BotList> {
     );
 
     await botProvider.deleteBot(accessToken, botId);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Bot deleted successfully')));
     await _loadBots();
   }
 
