@@ -22,20 +22,28 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Row(
-        children: [
-          // Sidebar
-          const Sidebar(),
+Widget build(BuildContext context) {
+  final isLargeScreen = MediaQuery.of(context).size.width >= 600;
 
-          // Main chat area
-          const Expanded(
-            child: ChatArea(),
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: isLargeScreen
+        ? null
+        : AppBar(
+            title: const Text('Jarvis'),
+            backgroundColor: Colors.blue.shade50,
+            iconTheme: const IconThemeData(color: Colors.blue),
           ),
-        ],
-      ),
-    );
-  }
+    drawer: isLargeScreen ? null : Drawer(child: Sidebar(selectedItem: 'Chat')),
+    body: isLargeScreen
+        ? Row(
+            children: const [
+              Sidebar(selectedItem: 'Chat'),
+              Expanded(child: ChatArea()),
+            ],
+          )
+        : const ChatArea(),
+  );
+}
+
 }

@@ -23,18 +23,32 @@ class _KnowledgeScreenState extends State<KnowledgeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Row(
-        children: [
-          // Sidebar
-          const Sidebar(selectedItem: "DATA",),
-
-          // Main chat area
-          const Expanded(
-            child: KnowledgeList(),
-          ),
-        ],
+      drawer: isMobile ? const Drawer(child: Sidebar(selectedItem: "DATA")) : null,
+      appBar: isMobile
+          ? AppBar(
+              title: const Text("Knowledge"),
+              backgroundColor: Colors.blue.shade50,
+              iconTheme: const IconThemeData(color: Colors.blue),
+              elevation: 0,
+            )
+          : null,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 600) {
+            return const KnowledgeList(); // Only content on small screen
+          } else {
+            return Row(
+              children: const [
+                Sidebar(selectedItem: "DATA"),
+                Expanded(child: KnowledgeList()),
+              ],
+            );
+          }
+        },
       ),
     );
   }

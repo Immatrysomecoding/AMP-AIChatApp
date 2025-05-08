@@ -38,28 +38,50 @@ class _BotScreenState extends State<BotScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLargeScreen = MediaQuery.of(context).size.width >= 600;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Row(
-        children: [
-          // Sidebar
-          const Sidebar(selectedItem: 'BOT'),
-
-          // Main content area
-          Expanded(
-            child:
-                _botId == null
-                    ? BotList(onUpdateBot: _showUpdateBot)
-                    : UpdateBot(
-                      botId: _botId!,
-                      initialName: _botName!,
-                      initialDescription: _botDesc!,
-                      initialInstructions: _botInstructions!,
-                      onBack: _goBackToBotList,
-                    ),
-          ),
-        ],
-      ),
+      appBar:
+          isLargeScreen
+              ? null
+              : AppBar(
+                title: const Text('Bots'),
+                backgroundColor: Colors.blue.shade50,
+                iconTheme: const IconThemeData(color: Colors.blue),
+              ),
+      drawer:
+          isLargeScreen
+              ? null
+              : const Drawer(child: Sidebar(selectedItem: 'BOT')),
+      body:
+          isLargeScreen
+              ? Row(
+                children: [
+                  const Sidebar(selectedItem: 'BOT'),
+                  Expanded(
+                    child:
+                        _botId == null
+                            ? BotList(onUpdateBot: _showUpdateBot)
+                            : UpdateBot(
+                              botId: _botId!,
+                              initialName: _botName!,
+                              initialDescription: _botDesc!,
+                              initialInstructions: _botInstructions!,
+                              onBack: _goBackToBotList,
+                            ),
+                  ),
+                ],
+              )
+              : _botId == null
+              ? BotList(onUpdateBot: _showUpdateBot)
+              : UpdateBot(
+                botId: _botId!,
+                initialName: _botName!,
+                initialDescription: _botDesc!,
+                initialInstructions: _botInstructions!,
+                onBack: _goBackToBotList,
+              ),
     );
   }
 }

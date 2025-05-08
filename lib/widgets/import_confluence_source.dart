@@ -73,18 +73,10 @@ class _ConfluenceImportDialogState extends State<ConfluenceImportDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _apiToken,
+              obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'API Token *',
-                hintText: 'Enter your Confluence API token',
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-
-            TextField(
-              controller: _wikiPageUrl,
-              decoration: const InputDecoration(
-                labelText: 'Slack Bot Token *',
-                hintText: 'Enter your Slack Bot Token',
+              labelText: 'API Token *',
+              hintText: 'Enter your Confluence API token',
               ),
               onChanged: (_) => setState(() {}),
             ),

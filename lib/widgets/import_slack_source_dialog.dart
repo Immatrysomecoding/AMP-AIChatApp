@@ -51,9 +51,10 @@ class _SlackImportDialogState extends State<SlackImportDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _slackBotToken,
+              obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Slack Bot Token *',
-                hintText: 'Enter your Slack Bot Token',
+              labelText: 'Slack Bot Token *',
+              hintText: 'Enter your Slack Bot Token',
               ),
               onChanged: (_) => setState(() {}),
             ),

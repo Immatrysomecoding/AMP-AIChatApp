@@ -5,18 +5,13 @@ import 'package:provider/provider.dart';
 class Sidebar extends StatelessWidget {
   final String selectedItem;
 
-  const Sidebar({
-    super.key,
-    this.selectedItem = 'Chat',
-  });
+  const Sidebar({super.key, this.selectedItem = 'Chat'});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 220,
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-      ),
+      decoration: BoxDecoration(color: Colors.blue.shade50),
       child: Column(
         children: [
           // Logo section
@@ -24,11 +19,7 @@ class Sidebar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Row(
               children: [
-                const Icon(
-                  Icons.account_circle,
-                  color: Colors.blue,
-                  size: 36,
-                ),
+                const Icon(Icons.account_circle, color: Colors.blue, size: 36),
                 const SizedBox(width: 10),
                 const Text(
                   'Jarvis',
@@ -50,6 +41,7 @@ class Sidebar extends StatelessWidget {
 
           // Navigation options
           _buildNavOption(
+            context: context,
             icon: Icons.chat_bubble,
             label: 'Chat',
             isSelected: selectedItem == 'Chat',
@@ -61,6 +53,7 @@ class Sidebar extends StatelessWidget {
           ),
 
           _buildNavOption(
+            context: context,
             icon: Icons.smart_toy_outlined,
             label: 'BOT',
             isSelected: selectedItem == 'BOT',
@@ -72,6 +65,7 @@ class Sidebar extends StatelessWidget {
           ),
 
           _buildNavOption(
+            context: context,
             icon: Icons.data_array_outlined,
             label: 'DATA',
             isSelected: selectedItem == 'DATA',
@@ -83,6 +77,7 @@ class Sidebar extends StatelessWidget {
           ),
 
           _buildNavOption(
+            context: context,
             icon: Icons.group_outlined,
             label: 'Group',
             isSelected: selectedItem == 'Group',
@@ -97,9 +92,7 @@ class Sidebar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Colors.blue.shade100),
-              ),
+              border: Border(top: BorderSide(color: Colors.blue.shade100)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -127,7 +120,10 @@ class Sidebar extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.exit_to_app),
                   onPressed: () async {
-                    await Provider.of<UserTokenProvider>(context, listen: false).logout();
+                    await Provider.of<UserTokenProvider>(
+                      context,
+                      listen: false,
+                    ).logout();
                     Navigator.pushReplacementNamed(context, '/login');
                   },
                   tooltip: 'Logout',
@@ -142,30 +138,34 @@ class Sidebar extends StatelessWidget {
   }
 
   Widget _buildNavOption({
+    required BuildContext context, // <-- add this
     required IconData icon,
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        onTap(); // Trigger navigation first
+
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (context.mounted && MediaQuery.of(context).size.width < 600) {
+            Navigator.of(context).pop(); // Now safe to call
+          }
+        });
+      },
+
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          border: isSelected
-              ? Border.all(color: Colors.blue.shade100)
-              : null,
+          border: isSelected ? Border.all(color: Colors.blue.shade100) : null,
         ),
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.blue : Colors.grey,
-              size: 24,
-            ),
+            Icon(icon, color: isSelected ? Colors.blue : Colors.grey, size: 24),
             const SizedBox(width: 12),
             Text(
               label,
