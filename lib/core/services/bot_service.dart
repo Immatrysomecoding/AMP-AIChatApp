@@ -292,7 +292,13 @@ class BotService {
     }
   }
 
-  Future<void> askBot(String token, String botId, String msg, String openAiThreadId, String additionalInstruction) async {
+  Future<void> askBot(
+    String token,
+    String botId,
+    String msg,
+    String openAiThreadId,
+    String additionalInstruction,
+  ) async {
     var headers = {
       'x-jarvis-guid': '',
       'Authorization': 'Bearer $token',
@@ -300,14 +306,229 @@ class BotService {
     };
     var request = http.Request(
       'POST',
-      Uri.parse(
-        '$baseUrl/kb-core/v1/ai-assistant/$botId/ask',
-      ),
+      Uri.parse('$baseUrl/kb-core/v1/ai-assistant/$botId/ask'),
     );
     request.body = json.encode({
       "message": msg,
       "openAiThreadId": openAiThreadId,
       "additionalInstruction": additionalInstruction,
+    });
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> getBotConfiguration(String token, String botId) async {
+    var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+    var request = http.Request(
+      'GET',
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/$botId/configurations'),
+    );
+
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> publishTelegramBot(
+    String token,
+    String botId,
+    String botToken,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/telegram/publish/$botId'),
+    );
+    request.body = json.encode({"botToken": botToken});
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> disconnectBotConfiguration(String token, String botId, String type) async {
+    var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+    var request = http.Request(
+      'DELETE',
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/$botId/$type'),
+    );
+
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> verifyTelegramBot(
+    String token,
+    String botToken,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/telegram/validation'),
+    );
+    request.body = json.encode({"botToken": botToken});
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> publishSlackBot(
+    String token,
+    String botId,
+    String botToken,
+    String clientId,
+    String clientSecret,
+    String signingSecret,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/slack/publish/$botId'),
+    );
+    request.body = json.encode({
+      "botToken": botToken,
+      "clientId": clientId,
+      "clientSecret": clientSecret,
+      "signingSecret": signingSecret,
+    });
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> verifySlackBot(
+    String token,
+    String botToken,
+    String clientId,
+    String clientSecret,
+    String signingSecret,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/slack/publish/'),
+    );
+    request.body = json.encode({
+      "botToken": botToken,
+      "clientId": clientId,
+      "clientSecret": clientSecret,
+      "signingSecret": signingSecret,
+    });
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> verifyMessengerBot(
+    String token,
+    String botToken,
+    String pageId,
+    String appSecret,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/messenger/validation'),
+    );
+    request.body = json.encode({
+      "botToken": botToken,
+      "pageId": pageId,
+      "appSecret": appSecret,
+    });
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
+    } else {
+      print(response.reasonPhrase);
+    }
+  }
+
+  Future<void> publishMessengerBot(
+    String token,
+    String botId,
+    String botToken,
+    String pageId,
+    String appSecret,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/messenger/publish/$botId'),
+    );
+    request.body = json.encode({
+      "botToken": botToken,
+      "pageId": pageId,
+      "appSecret": appSecret,
     });
     request.headers.addAll(headers);
 
