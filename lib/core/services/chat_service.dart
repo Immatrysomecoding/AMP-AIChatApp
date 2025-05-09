@@ -65,12 +65,6 @@ class ChatService {
         'name': 'Deepseek Chat',
         'description': 'Deepseek\'s conversational AI model.',
       },
-      {
-        'id': 'bot_jarvis',
-        'model': 'knowledge-base',
-        'name': 'Jarvis Bot',
-        'description': 'Your custom assistant bot.',
-      },
     ];
 
     return mockModels.map((model) => AIModel.fromJson(model)).toList();
@@ -233,6 +227,9 @@ class ChatService {
 
     try {
       var url = Uri.parse('$baseUrl/api/v1/ai-chat/messages');
+      print("Sending message to ${url.path}");
+      print("Request body: ${json.encode(body)}");
+
       var response = await http.post(
         url,
         headers: headers,
@@ -240,14 +237,15 @@ class ChatService {
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final responseData = json.decode(response.body);
+        print("Message sent successfully: ${response.body}");
+        return responseData;
       } else {
         print("❌ Failed to send message to ${url.path}");
         print("Status: ${response.statusCode}");
         print("Response: ${response.body}");
 
         // Return a mock response instead of throwing to prevent UI flashes
-        // This will show an error message in the UI but prevent crashes
         return {
           'conversationId':
               conversationId ??

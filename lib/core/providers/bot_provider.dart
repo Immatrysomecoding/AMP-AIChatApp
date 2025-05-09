@@ -22,6 +22,13 @@ class BotProvider with ChangeNotifier {
     try {
       // Fetch your bots (mock or real API)
       _bots = await _botService.fetchBots(token);
+
+      // Ensure each bot has the correct ID
+      _bots =
+          _bots.map((bot) {
+            print("Fetched bot: ${bot.id} - ${bot.assistantName}");
+            return bot;
+          }).toList();
     } catch (e) {
       print('Error fetching bots: $e');
     } finally {

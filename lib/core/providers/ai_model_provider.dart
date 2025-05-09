@@ -22,11 +22,16 @@ class AIModelProvider with ChangeNotifier {
     try {
       _availableModels = await _chatService.getAvailableModels(token);
 
-      // Set a default selected model if none is selected yet
+      // Set a default selected model from the base models (not a bot)
       if (_selectedModel == null && _availableModels.isNotEmpty) {
+        // Find a default model that's not a bot
         _selectedModel = _availableModels.firstWhere(
-          (model) => model.isDefault,
-          orElse: () => _availableModels.first,
+          (model) => model.isDefault && !model.id.startsWith('bot_'),
+          orElse:
+              () => _availableModels.firstWhere(
+                (model) => !model.id.startsWith('bot_'),
+                orElse: () => _availableModels.first,
+              ),
         );
       }
     } catch (e) {
@@ -36,6 +41,11 @@ class AIModelProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void updateAvailableModels(List<AIModel> models) {
+    _availableModels = models;
+    notifyListeners();
   }
 
   // Set selected AI model with smoother state transition

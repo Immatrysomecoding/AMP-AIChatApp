@@ -9,6 +9,7 @@ import 'package:aichat/core/models/AIModel.dart';
 import 'package:aichat/core/models/Prompt.dart';
 import 'package:aichat/widgets/prompt_library_overlay.dart';
 import 'package:aichat/utils/prompt_utils.dart';
+import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:aichat/widgets/message_bubble.dart';
 import 'package:aichat/widgets/prompt_input_overlay.dart';
 import 'dart:math';
@@ -27,11 +28,22 @@ class _ChatAreaState extends State<ChatArea> {
   final ScrollController _scrollController = ScrollController();
   bool _isFirstLoad = true;
   Prompt? _selectedPrompt;
+  bool _isShowingPromptSuggestions = false;
+  String _promptFilterText = '';
+  final FocusNode _inputFocusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _promptOverlay;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _messageController.addListener(_handleTextChange);
+    _inputFocusNode.addListener(() {
+      if (!_inputFocusNode.hasFocus) {
+        _hidePromptSuggestions();
+      }
+    });
   }
 
   void _loadData() async {
@@ -131,9 +143,146 @@ class _ChatAreaState extends State<ChatArea> {
 
   @override
   void dispose() {
+    _messageController.removeListener(_handleTextChange);
+    _inputFocusNode.dispose();
+    _hidePromptSuggestions();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleTextChange() {
+    final text = _messageController.text;
+
+    // Check if the text contains a slash command
+    if (text.contains('/')) {
+      final slashIndex = text.lastIndexOf('/');
+
+      // Only show suggestions if the slash is at the start or after a space
+      if (slashIndex == 0 || (slashIndex > 0 && text[slashIndex - 1] == ' ')) {
+        // Extract the filter text after the slash
+        final query = text.substring(slashIndex + 1);
+
+        setState(() {
+          _promptFilterText = query;
+          _isShowingPromptSuggestions = true;
+        });
+
+        _showPromptSuggestions();
+      } else {
+        _hidePromptSuggestions();
+      }
+    } else {
+      _hidePromptSuggestions();
+    }
+  }
+
+  void _showPromptSuggestions() {
+    // Remove existing overlay if it exists
+    _hidePromptSuggestions();
+
+    final promptProvider = Provider.of<PromptProvider>(context, listen: false);
+    final prompts = promptProvider.publicPrompts;
+
+    // Filter prompts based on the filter text
+    final filteredPrompts =
+        prompts.where((prompt) {
+          return prompt.title.toLowerCase().contains(
+            _promptFilterText.toLowerCase(),
+          );
+        }).toList();
+
+    // Only show overlay if we have prompts and if the text field has focus
+    if (filteredPrompts.isEmpty || !_inputFocusNode.hasFocus) return;
+
+    // Create the overlay
+    _promptOverlay = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          width: 400,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: const Offset(0, -10), // Position above the input field
+            child: Material(
+              elevation: 4,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: 300,
+                  maxWidth: MediaQuery.of(context).size.width * 0.8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'Prompts',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filteredPrompts.length,
+                        itemBuilder: (context, index) {
+                          final prompt = filteredPrompts[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(prompt.title),
+                            subtitle: Text(
+                              prompt.description ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () {
+                              // Clear the input and hide suggestions
+                              _messageController.text = '';
+                              _hidePromptSuggestions();
+
+                              // Show the prompt input dialog
+                              _showPromptInput(prompt);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    // Show the overlay
+    Overlay.of(context).insert(_promptOverlay!);
+  }
+
+  void _hidePromptSuggestions() {
+    if (_promptOverlay != null) {
+      _promptOverlay!.remove();
+      _promptOverlay = null;
+    }
+
+    if (_isShowingPromptSuggestions) {
+      setState(() {
+        _isShowingPromptSuggestions = false;
+      });
+    }
   }
 
   void _togglePromptLibrary() {
@@ -349,7 +498,7 @@ class _ChatAreaState extends State<ChatArea> {
     return Stack(
       children: [
         Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch, // Add this line
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Chat messages or welcome screen
             Expanded(
@@ -430,20 +579,35 @@ class _ChatAreaState extends State<ChatArea> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            controller: _messageController,
-                            decoration: InputDecoration(
-                              hintText:
-                                  "Ask me anything, press '/' for prompts...",
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
+                          child: CompositedTransformTarget(
+                            link: _layerLink,
+                            child: TextField(
+                              controller: _messageController,
+                              focusNode: _inputFocusNode,
+                              decoration: InputDecoration(
+                                hintText:
+                                    "Ask me anything, press '/' for prompts...",
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
-                              hintStyle: TextStyle(color: Colors.grey.shade600),
+                              onSubmitted: (_) {
+                                _hidePromptSuggestions();
+                                _sendMessage();
+                              },
+                              enabled: !chatProvider.isSendingMessage,
+                              onTap: () {
+                                // Reshow suggestions if "/" is in text and field is tapped
+                                if (_messageController.text.contains('/')) {
+                                  _handleTextChange();
+                                }
+                              },
                             ),
-                            onSubmitted: (_) => _sendMessage(),
-                            enabled: !chatProvider.isSendingMessage,
                           ),
                         ),
 
@@ -481,7 +645,10 @@ class _ChatAreaState extends State<ChatArea> {
                             onPressed:
                                 chatProvider.isSendingMessage
                                     ? null
-                                    : _sendMessage,
+                                    : () {
+                                      _hidePromptSuggestions();
+                                      _sendMessage();
+                                    },
                           ),
                         ),
                       ],
@@ -500,7 +667,7 @@ class _ChatAreaState extends State<ChatArea> {
           onPromptSelected: _handlePromptSelected,
         ),
 
-        // Use our improved prompt input overlay instead of the old one
+        // Prompt input overlay
         if (_selectedPrompt != null)
           PromptInputOverlay(
             isVisible: _isPromptInputOverlayVisible,
@@ -777,20 +944,21 @@ class _ChatAreaState extends State<ChatArea> {
 
   Widget _buildModelSelector(AIModelProvider aiModelProvider) {
     return PopupMenuButton<AIModel>(
-      enabled: !_isFirstLoad, // Disable when loading
+      enabled: !_isFirstLoad,
       offset: const Offset(0, 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 4,
+      color: Colors.white,
       child: Container(
-        constraints: const BoxConstraints(
-          minWidth: 120,
-          maxWidth: 180,
-        ), // Add constraints
+        constraints: const BoxConstraints(minWidth: 120, maxWidth: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min, // Make sure it takes minimal space
+          mainAxisSize: MainAxisSize.min,
           children: [
             _isFirstLoad
                 ? SizedBox(
@@ -805,9 +973,8 @@ class _ChatAreaState extends State<ChatArea> {
                 )
                 : _getModelIcon(aiModelProvider.selectedModel?.id ?? ''),
             const SizedBox(width: 8),
-            // Wrap Text in Flexible with correct fit
             Flexible(
-              fit: FlexFit.loose, // Use loose fit to ensure proper layout
+              fit: FlexFit.loose,
               child: Text(
                 _isFirstLoad
                     ? 'Loading...'
@@ -815,6 +982,7 @@ class _ChatAreaState extends State<ChatArea> {
                 style: TextStyle(
                   color: _isFirstLoad ? Colors.grey : Colors.black87,
                   overflow: TextOverflow.ellipsis,
+                  fontWeight: FontWeight.w500,
                 ),
                 maxLines: 1,
               ),
@@ -825,9 +993,12 @@ class _ChatAreaState extends State<ChatArea> {
         ),
       ),
       itemBuilder: (BuildContext context) {
+        // Create the popup menu with sections and styled items
         List<PopupMenuEntry<AIModel>> items = [
           const PopupMenuItem<AIModel>(
             enabled: false,
+            height: 32,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
               'Base AI Models',
               style: TextStyle(
@@ -839,7 +1010,7 @@ class _ChatAreaState extends State<ChatArea> {
           ),
         ];
 
-        // Add base AI models
+        // Add base AI models with icons
         final baseModels =
             aiModelProvider.availableModels
                 .where((model) => !model.id.startsWith('bot_'))
@@ -849,27 +1020,44 @@ class _ChatAreaState extends State<ChatArea> {
           items.add(
             PopupMenuItem<AIModel>(
               value: model,
+              height: 46,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  _getModelIcon(model.id),
-                  const SizedBox(width: 8),
-                  Text(model.name),
+                  _getModelIconForDropdown(model.id),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      model.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
           );
         }
 
-        // Add custom bots if available
+        // Add custom bots section if available - ensure we have real bots, not placeholder ones
         final customBots =
             aiModelProvider.availableModels
                 .where((model) => model.id.startsWith('bot_'))
                 .toList();
 
+        // Always fetch the latest bots
+        _fetchUserBots();
+
+        // Only add the Your Bots section if we have actual bots
         if (customBots.isNotEmpty) {
           items.add(
             const PopupMenuItem<AIModel>(
               enabled: false,
+              height: 32,
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Text(
                 'Your Bots',
                 style: TextStyle(
@@ -882,14 +1070,43 @@ class _ChatAreaState extends State<ChatArea> {
           );
 
           for (var bot in customBots) {
+            // Skip any bot with a generic name like "Jarvis Bot"
+            if (bot.name.toLowerCase() == "jarvis bot") continue;
+
             items.add(
               PopupMenuItem<AIModel>(
                 value: bot,
+                height: 46,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 child: Row(
                   children: [
-                    const Icon(Icons.smart_toy_outlined, color: Colors.blue),
-                    const SizedBox(width: 8),
-                    Text(bot.name),
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: const BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.smart_toy_outlined,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        bot.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -905,12 +1122,168 @@ class _ChatAreaState extends State<ChatArea> {
     );
   }
 
-  Widget _getModelIcon(String modelId) {
-    // Return appropriate icon based on model type
+  void _fetchUserBots() {
+    Future.delayed(Duration.zero, () async {
+      final userProvider = Provider.of<UserTokenProvider>(
+        context,
+        listen: false,
+      );
+      final accessToken = userProvider.user?.accessToken ?? '';
+
+      if (accessToken.isEmpty) return;
+
+      try {
+        // Fetch bots using BotProvider
+        final botProvider = Provider.of<BotProvider>(context, listen: false);
+        await botProvider.fetchBots(accessToken);
+
+        // Make sure we have actual bots before continuing
+        if (botProvider.bots.isEmpty) {
+          print("No bots found for user.");
+          return;
+        }
+
+        // Convert bots to AIModel format for the dropdown
+        List<AIModel> botModels =
+            botProvider.bots.map((bot) {
+              print(
+                "Creating AIModel for bot: ${bot.id} - ${bot.assistantName}",
+              );
+              return AIModel(
+                id: 'bot_${bot.id}', // Store the full bot ID
+                model: 'knowledge-base',
+                name: bot.assistantName,
+                description: bot.description,
+              );
+            }).toList();
+
+        // Update the AIModelProvider with these bots
+        final aiModelProvider = Provider.of<AIModelProvider>(
+          context,
+          listen: false,
+        );
+
+        // Filter out ALL existing bot models (to remove any "Jarvis Bot" placeholders)
+        List<AIModel> currentModels = aiModelProvider.availableModels;
+        List<AIModel> baseModels =
+            currentModels
+                .where((model) => !model.id.startsWith('bot_'))
+                .toList();
+
+        // Combine base models with fetched bot models
+        List<AIModel> updatedModels = [...baseModels, ...botModels];
+
+        // Update the models in the provider
+        aiModelProvider.updateAvailableModels(updatedModels);
+      } catch (e) {
+        print('Error fetching bots: $e');
+      }
+    });
+  }
+
+  Widget _getModelIconForDropdown(String modelId) {
     if (modelId.contains('gpt-4o-mini')) {
-      return const Icon(Icons.circle, color: Colors.black, size: 20);
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black,
+        ),
+        child: const Center(
+          child: Text(
+            "G",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
     } else if (modelId.contains('gpt-4o')) {
-      return const Icon(Icons.circle, color: Colors.purple, size: 20);
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.purple,
+        ),
+        child: const Center(
+          child: Text(
+            "G",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    } else if (modelId.contains('gemini-1.5-flash')) {
+      return const Icon(Icons.flight_takeoff, color: Colors.blue, size: 20);
+    } else if (modelId.contains('gemini-1.5-pro')) {
+      return const Icon(Icons.bolt, color: Colors.black, size: 20);
+    } else if (modelId.contains('claude-3-haiku')) {
+      return const Icon(Icons.auto_awesome, color: Colors.orange, size: 20);
+    } else if (modelId.contains('claude-3.5-sonnet')) {
+      return const Icon(Icons.auto_awesome, color: Colors.orange, size: 20);
+    } else if (modelId.contains('deepseek')) {
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.blue,
+        ),
+        child: const Center(
+          child: Icon(Icons.water_drop, color: Colors.white, size: 14),
+        ),
+      );
+    } else {
+      return const Icon(Icons.assistant, color: Colors.black87, size: 20);
+    }
+  }
+
+  Widget _getModelIcon(String modelId) {
+    if (modelId.contains('gpt-4o-mini')) {
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black,
+        ),
+        child: const Center(
+          child: Text(
+            "G",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    } else if (modelId.contains('gpt-4o')) {
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.purple,
+        ),
+        child: const Center(
+          child: Text(
+            "G",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
     } else if (modelId.contains('gemini-1.5-flash')) {
       return const Icon(Icons.flight_takeoff, color: Colors.blue, size: 20);
     } else if (modelId.contains('gemini-1.5-pro')) {
