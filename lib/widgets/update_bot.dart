@@ -7,6 +7,19 @@ import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:aichat/widgets/bot_knowledge_list.dart';
 
+// Simple message model for the chat preview
+class ChatMessage {
+  final String content;
+  final bool isUser;
+  final String senderName;
+
+  ChatMessage({
+    required this.content,
+    required this.isUser,
+    required this.senderName,
+  });
+}
+
 class UpdateBot extends StatefulWidget {
   const UpdateBot({
     super.key,
@@ -30,6 +43,7 @@ class UpdateBot extends StatefulWidget {
 class _UpdateBotState extends State<UpdateBot> {
   late TextEditingController _descriptionController;
   late TextEditingController _instructionsController;
+  late TextEditingController _messageController;
   late String _description;
   late String _instructions;
   List<Knowledge> _importedKnowledge = [];
@@ -38,6 +52,11 @@ class _UpdateBotState extends State<UpdateBot> {
   late String _currentInitialDescription; // track updates locally
   late String _botName;
   late String _initialBotName;
+
+  // Chat variables
+  List<ChatMessage> _messages = [];
+  bool _isSending = false;
+  String? _currentThreadId;
 
   @override
   void initState() {
@@ -53,11 +72,15 @@ class _UpdateBotState extends State<UpdateBot> {
 
     _descriptionController = TextEditingController(text: _description);
     _instructionsController = TextEditingController(text: _instructions);
+    _messageController = TextEditingController();
 
     _descriptionController.addListener(_onChanges);
     _instructionsController.addListener(_onChanges);
 
     _loadKnowledge();
+
+    // Start with an empty thread
+    _initializeThread();
   }
 
   void _loadKnowledge() async {
@@ -130,6 +153,164 @@ class _UpdateBotState extends State<UpdateBot> {
 
     final botProvider = Provider.of<BotProvider>(context, listen: false);
     return await botProvider.getImportedKnowledge(accessToken, botId);
+  }
+
+  Future<void> _initializeThread() async {
+    setState(() {
+      // Don't clear messages - we'll add the initial exchange to the existing chat
+      _isSending = true;
+    });
+
+    try {
+      final botProvider = Provider.of<BotProvider>(context, listen: false);
+      final token = getUserToken();
+
+      // Create a new thread
+      final response = await botProvider.createThreadForBot(
+        token,
+        widget.botId,
+        "Hello",
+      );
+
+      // Extract thread ID from response
+      if (response != null && response.containsKey('openAiThreadId')) {
+        _currentThreadId = response['openAiThreadId'];
+
+        // Add initial messages only if the chat is empty
+        if (_messages.isEmpty) {
+          setState(() {
+            _messages.add(
+              ChatMessage(content: "Hello", isUser: true, senderName: "You"),
+            );
+
+            _messages.add(
+              ChatMessage(
+                content:
+                    response['message'] ?? "Hello! How can I assist you today?",
+                isUser: false,
+                senderName: _botName,
+              ),
+            );
+          });
+        }
+      }
+    } catch (e) {
+      print("Error creating thread: $e");
+
+      // Fallback to placeholder conversation if API fails and chat is empty
+      if (_messages.isEmpty) {
+        setState(() {
+          _messages.add(
+            ChatMessage(content: "Hello", isUser: true, senderName: "You"),
+          );
+
+          _messages.add(
+            ChatMessage(
+              content: "Hello! How can I assist you today?",
+              isUser: false,
+              senderName: _botName,
+            ),
+          );
+        });
+      }
+    } finally {
+      setState(() {
+        _isSending = false;
+      });
+    }
+  }
+
+  // Send a message to the bot
+  Future<void> _sendMessage() async {
+    final message = _messageController.text.trim();
+    if (message.isEmpty || _isSending) return;
+
+    // Clear the input
+    _messageController.clear();
+
+    // Add user message to the list
+    setState(() {
+      _messages.add(
+        ChatMessage(content: message, isUser: true, senderName: "You"),
+      );
+      _isSending = true;
+    });
+
+    try {
+      final botProvider = Provider.of<BotProvider>(context, listen: false);
+      final token = getUserToken();
+
+      if (_currentThreadId == null) {
+        // If we don't have a thread ID, create one first
+        await _initializeThread();
+      }
+
+      // Add a placeholder bot message that will be updated with the streamed response
+      final int botMessageIndex = _messages.length;
+      setState(() {
+        _messages.add(
+          ChatMessage(content: "", isUser: false, senderName: _botName),
+        );
+      });
+
+      String fullResponse = "";
+
+      // Send the message with callback for streaming updates
+      final response = await botProvider.askBot(
+        token,
+        widget.botId,
+        message,
+        _currentThreadId ?? "",
+        "",
+        onChunkReceived: (chunk) {
+          // Update the message as each chunk arrives
+          fullResponse += chunk;
+          setState(() {
+            if (botMessageIndex < _messages.length) {
+              // Update the bot message in place as chunks arrive
+              _messages[botMessageIndex] = ChatMessage(
+                content: fullResponse,
+                isUser: false,
+                senderName: _botName,
+              );
+            }
+          });
+        },
+      );
+
+      // Make sure the final message is set correctly if the streaming didn't work properly
+      if (response != null &&
+          response.containsKey('message') &&
+          response['message'].toString().isNotEmpty) {
+        setState(() {
+          if (botMessageIndex < _messages.length) {
+            _messages[botMessageIndex] = ChatMessage(
+              content: response['message'],
+              isUser: false,
+              senderName: _botName,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      print("Error sending message: $e");
+
+      // Add error message if failed
+      setState(() {
+        _messages.add(
+          ChatMessage(
+            content:
+                "Sorry, there was an error processing your message. Please try again.",
+            isUser: false,
+            senderName: _botName,
+          ),
+        );
+      });
+    } finally {
+      setState(() {
+        _isSending = false;
+      });
+    }
   }
 
   @override
@@ -274,41 +455,203 @@ class _UpdateBotState extends State<UpdateBot> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Preview',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  const Center(
+                  // Preview header
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.smart_toy, size: 48, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text("No messages yet"),
-                        Text("Start a conversation to test your bot!"),
+                        const Text(
+                          'Preview',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(
+                          "Preview the assistant's responses in a chat interface.",
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText:
-                                "Ask me anything, press '/' for prompts...",
-                            border: OutlineInputBorder(),
+
+                  // Chat container with messages
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          // Messages area
+                          Expanded(
+                            child:
+                                _messages.isEmpty
+                                    ? const Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.smart_toy,
+                                            size: 48,
+                                            color: Colors.grey,
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text("No messages yet"),
+                                          Text(
+                                            "Start a conversation to test your bot!",
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                    : ListView.builder(
+                                      padding: const EdgeInsets.all(16),
+                                      itemCount: _messages.length,
+                                      itemBuilder: (context, index) {
+                                        final message = _messages[index];
+
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 16.0,
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              // Avatar
+                                              Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      message.isUser
+                                                          ? Colors.blue
+                                                          : Colors
+                                                              .grey
+                                                              .shade200,
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                ),
+                                                child: Center(
+                                                  child:
+                                                      message.isUser
+                                                          ? const Icon(
+                                                            Icons.person,
+                                                            size: 18,
+                                                            color: Colors.white,
+                                                          )
+                                                          : const Icon(
+                                                            Icons.smart_toy,
+                                                            size: 18,
+                                                            color: Colors.grey,
+                                                          ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+
+                                              // Message content
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      message.senderName,
+                                                      style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(message.content),
+
+                                                    // Copy button for bot messages
+                                                    if (!message.isUser)
+                                                      Align(
+                                                        alignment:
+                                                            Alignment
+                                                                .centerRight,
+                                                        child: IconButton(
+                                                          icon: const Icon(
+                                                            Icons.copy,
+                                                            size: 16,
+                                                          ),
+                                                          onPressed: () {
+                                                            // Copy to clipboard
+                                                          },
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
                           ),
-                        ),
+
+                          // New thread button
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.add),
+                                label: const Text('New Thread'),
+                                onPressed: () {
+                                  // Clear the messages and start a new thread
+                                  setState(() {
+                                    _messages = [];
+                                    _currentThreadId = null;
+                                  });
+                                  _initializeThread();
+                                },
+                              ),
+                            ),
+                          ),
+
+                          // Chat input
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _messageController,
+                                    decoration: const InputDecoration(
+                                      hintText:
+                                          "Ask me anything, press '/' for prompts...",
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                    ),
+                                    onSubmitted: (_) => _sendMessage(),
+                                    enabled: !_isSending,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon:
+                                      _isSending
+                                          ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                          : const Icon(Icons.send),
+                                  onPressed: _isSending ? null : _sendMessage,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: () {
-                          // TODO: Implement send logic
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -392,24 +735,20 @@ class _UpdateBotState extends State<UpdateBot> {
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () {
-                      print("Bot ID: ${widget.botId}");
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder:
-                              (context) =>
-                                  PublishScreen(botId: widget.botId), // Replace with your widget
+                              (context) => PublishScreen(botId: widget.botId),
                         ),
                       );
                     },
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.publish),
-                        const SizedBox(
-                          width: 8,
-                        ), // Add spacing between the icon and text
-                        const Text("Publish Bot"),
+                        Icon(Icons.publish),
+                        SizedBox(width: 8),
+                        Text("Publish Bot"),
                       ],
                     ),
                   ),
@@ -426,6 +765,7 @@ class _UpdateBotState extends State<UpdateBot> {
   void dispose() {
     _descriptionController.dispose();
     _instructionsController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 }

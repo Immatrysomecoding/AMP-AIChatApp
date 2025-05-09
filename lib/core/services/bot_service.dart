@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:aichat/core/models/BotConfiguration.dart';
 import 'package:aichat/core/models/Knowledge.dart';
@@ -235,7 +236,7 @@ class BotService {
     }
   }
 
-  Future<void> createThreadForBot(
+  Future<Map<String, dynamic>?> createThreadForBot(
     String token,
     String botId,
     String firstMsg,
@@ -245,22 +246,49 @@ class BotService {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
     };
-    var request = http.Request(
-      'POST',
-      Uri.parse('$baseUrl/kb-core/v1/ai-assistant/thread'),
-    );
-    request.body = json.encode({
-      "assistantId": botId,
-      "firstMessage": firstMsg,
-    });
-    request.headers.addAll(headers);
 
-    http.StreamedResponse response = await request.send();
+    try {
+      var request = http.Request(
+        'POST',
+        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/thread'),
+      );
+      request.body = json.encode({
+        "assistantId": botId,
+        "firstMessage": firstMsg,
+      });
+      request.headers.addAll(headers);
 
-    if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
-    } else {
-      print(response.reasonPhrase);
+      final response = await http.post(
+        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/thread'),
+        headers: headers,
+        body: json.encode({"assistantId": botId, "firstMessage": firstMsg}),
+      );
+
+      if (response.statusCode == 200) {
+        print("Thread created successfully: ${response.body}");
+
+        // Attempt to parse as JSON
+        Map<String, dynamic> data = json.decode(response.body);
+
+        // If the response doesn't contain message data, synthesize it
+        if (!data.containsKey('message')) {
+          data['message'] = "Hello! How can I assist you today?";
+        }
+
+        return data;
+      } else {
+        print(
+          "Error creating thread: ${response.statusCode} - ${response.body}",
+        );
+        return null;
+      }
+    } catch (e) {
+      print("Exception in createThreadForBot: $e");
+      return {
+        'openAiThreadId':
+            'placeholder-thread-${DateTime.now().millisecondsSinceEpoch}',
+        'message': 'Hello! How can I assist you today?',
+      };
     }
   }
 
@@ -293,35 +321,86 @@ class BotService {
     }
   }
 
-  Future<void> askBot(
+  Future<Map<String, dynamic>?> askBot(
     String token,
     String botId,
     String msg,
     String openAiThreadId,
-    String additionalInstruction,
-  ) async {
+    String additionalInstruction, {
+    Function(String)? onChunkReceived,
+  }) async {
     var headers = {
       'x-jarvis-guid': '',
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
+      'Accept': 'text/event-stream', // Important for SSE
     };
-    var request = http.Request(
-      'POST',
-      Uri.parse('$baseUrl/kb-core/v1/ai-assistant/$botId/ask'),
-    );
-    request.body = json.encode({
-      "message": msg,
-      "openAiThreadId": openAiThreadId,
-      "additionalInstruction": additionalInstruction,
-    });
-    request.headers.addAll(headers);
 
-    http.StreamedResponse response = await request.send();
+    try {
+      var request = http.Request(
+        'POST',
+        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/$botId/ask'),
+      );
+      request.body = json.encode({
+        "message": msg,
+        "openAiThreadId": openAiThreadId,
+        "additionalInstruction": additionalInstruction,
+      });
+      request.headers.addAll(headers);
 
-    if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
-    } else {
-      print(response.reasonPhrase);
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        // Handle streaming response
+        String fullResponse = '';
+        String partialResponse = '';
+
+        await for (var chunk in response.stream.transform(utf8.decoder)) {
+          print("Received chunk: $chunk");
+
+          // Parse the SSE format
+          for (var line in chunk.split('\n')) {
+            if (line.startsWith('data:')) {
+              String data = line.substring(5).trim();
+
+              try {
+                // Try to parse as JSON
+                Map<String, dynamic> jsonData = json.decode(data);
+
+                if (jsonData.containsKey('content')) {
+                  partialResponse = jsonData['content'];
+                  fullResponse += partialResponse;
+
+                  if (onChunkReceived != null) {
+                    onChunkReceived(partialResponse);
+                  }
+                }
+
+                // Check if this is the end of the message
+                if (line.contains('message_end')) {
+                  break;
+                }
+              } catch (e) {
+                print("Error parsing SSE data: $e");
+              }
+            }
+          }
+        }
+
+        // Return the complete response
+        return {'message': fullResponse, 'openAiThreadId': openAiThreadId};
+      } else {
+        print(
+          "Error asking bot: ${response.statusCode} ${response.reasonPhrase}",
+        );
+        return null;
+      }
+    } catch (e) {
+      print("Exception in askBot: $e");
+      return {
+        'message': "I'm sorry, I couldn't process that request.",
+        'openAiThreadId': openAiThreadId,
+      };
     }
   }
 

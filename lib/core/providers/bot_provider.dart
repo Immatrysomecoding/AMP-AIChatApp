@@ -254,4 +254,54 @@ class BotProvider with ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+  Future<Map<String, dynamic>?> createThreadForBot(
+    String token,
+    String botId,
+    String firstMsg,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+
+    Map<String, dynamic>? result;
+    try {
+      result = await _botService.createThreadForBot(token, botId, firstMsg);
+    } catch (e) {
+      print("Error creating thread in provider: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> askBot(
+    String token,
+    String botId,
+    String msg,
+    String openAiThreadId,
+    String additionalInstruction, {
+    Function(String)? onChunkReceived,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    Map<String, dynamic>? result;
+    try {
+      result = await _botService.askBot(
+        token,
+        botId,
+        msg,
+        openAiThreadId,
+        additionalInstruction,
+        onChunkReceived: onChunkReceived,
+      );
+    } catch (e) {
+      print("Error asking bot in provider: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+    return result;
+  }
 }
