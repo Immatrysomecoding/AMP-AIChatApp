@@ -392,12 +392,13 @@ class _UpdateBotState extends State<UpdateBot> {
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () {
+                      print("Bot ID: ${widget.botId}");
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder:
                               (context) =>
-                                  PublishScreen(), // Replace with your widget
+                                  PublishScreen(botId: widget.botId), // Replace with your widget
                         ),
                       );
                     },

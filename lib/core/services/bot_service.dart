@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:aichat/core/models/BotConfiguration.dart';
 import 'package:aichat/core/models/Knowledge.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -13,7 +14,7 @@ class BotService {
     var request = http.Request(
       'GET',
       Uri.parse(
-        '$baseUrl/kb-core/v1/ai-assistant?q&order=DESC&order_field=createdAt&offset&limit=20&is_published',
+        '$baseUrl/kb-core/v1/ai-assistant?q&order=DESC&order_field=createdAt&offset&limit=20',
       ),
     );
 
@@ -324,8 +325,12 @@ class BotService {
     }
   }
 
-  Future<void> getBotConfiguration(String token, String botId) async {
+  Future<List<BotConfiguration>> getBotConfiguration(
+    String token,
+    String botId,
+  ) async {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+
     var request = http.Request(
       'GET',
       Uri.parse('$baseUrl/kb-core/v1/bot-integration/$botId/configurations'),
@@ -336,9 +341,22 @@ class BotService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+      final responseBody = await response.stream.bytesToString();
+      final decoded = json.decode(responseBody);
+
+      print("Decoded: $decoded");
+
+      // Correct: `decoded` is a List
+      List<BotConfiguration> botConfigurations =
+          (decoded as List)
+              .map((botData) => BotConfiguration.fromJson(botData))
+              .toList();
+
+      print("Bot configuration fetched successfully");
+      return botConfigurations;
     } else {
-      print(response.reasonPhrase);
+      print('Error: ${response.statusCode} ${response.reasonPhrase}');
+      return [];
     }
   }
 
@@ -362,13 +380,19 @@ class BotService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+      print("Telegram bot published successfully");
+      final responseBody = await response.stream.bytesToString();
+      final decoded = json.decode(responseBody);
     } else {
       print(response.reasonPhrase);
     }
   }
 
-  Future<void> disconnectBotConfiguration(String token, String botId, String type) async {
+  Future<void> disconnectBotConfiguration(
+    String token,
+    String botId,
+    String type,
+  ) async {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
     var request = http.Request(
       'DELETE',
@@ -386,10 +410,7 @@ class BotService {
     }
   }
 
-  Future<void> verifyTelegramBot(
-    String token,
-    String botToken,
-  ) async {
+  Future<bool> verifyTelegramBot(String token, String botToken) async {
     var headers = {
       'x-jarvis-guid': '',
       'Authorization': 'Bearer $token',
@@ -405,10 +426,18 @@ class BotService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+      print("Telegram bot verified successfully");
+      final responseBody = await response.stream.bytesToString();
+      final decoded = json.decode(responseBody);
+      if (decoded['ok'] == true) {
+        return true;
+      }
+      print("Decoded: $decoded");
     } else {
       print(response.reasonPhrase);
+      print("Failed to verify Telegram bot: ${response.statusCode}");
     }
+    return false;
   }
 
   Future<void> publishSlackBot(
@@ -445,7 +474,7 @@ class BotService {
     }
   }
 
-  Future<void> verifySlackBot(
+  Future<bool> verifySlackBot(
     String token,
     String botToken,
     String clientId,
@@ -472,13 +501,20 @@ class BotService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+      print("Slack bot verified successfully");
+      final responseBody = await response.stream.bytesToString();
+      final decoded = json.decode(responseBody);
+      if (decoded['ok'] == true) {
+        return true;
+      }
     } else {
       print(response.reasonPhrase);
     }
+
+    return false;
   }
 
-  Future<void> verifyMessengerBot(
+  Future<bool> verifyMessengerBot(
     String token,
     String botToken,
     String pageId,
@@ -504,9 +540,17 @@ class BotService {
 
     if (response.statusCode == 200) {
       print(await response.stream.bytesToString());
+      final responseBody = await response.stream.bytesToString();
+      final decoded = json.decode(responseBody);
+      if (decoded['ok'] == true) {
+        return true;
+      }
     } else {
       print(response.reasonPhrase);
+      print("Failed to verify Messenger bot: ${response.statusCode}");
     }
+
+    return false;
   }
 
   Future<void> publishMessengerBot(

@@ -1,3 +1,4 @@
+import 'package:aichat/core/models/BotConfiguration.dart';
 import 'package:aichat/core/models/Knowledge.dart';
 import 'package:flutter/material.dart';
 import 'package:aichat/core/models/Bot.dart';
@@ -8,6 +9,9 @@ class BotProvider with ChangeNotifier {
   List<Bot> get bots => _bots;
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+
+  List<BotConfiguration> _botConfigurations = [];
+  List<BotConfiguration> get botConfigurations => _botConfigurations;
 
   final BotService _botService = BotService();
 
@@ -117,7 +121,9 @@ class BotProvider with ChangeNotifier {
   Future<void> getBotConfiguration(String token, String botId) async {
     _isLoading = true;
     notifyListeners();
-    await _botService.getBotConfiguration(token, botId);
+
+    _botConfigurations = await _botService.getBotConfiguration(token, botId);
+
     _isLoading = false;
     notifyListeners();
   }
@@ -134,15 +140,20 @@ class BotProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> verifyTelegramBot(String token, String botToken) async {
+  Future<bool> verifyTelegramBot(String token, String botToken) async {
     _isLoading = true;
     notifyListeners();
-    await _botService.verifyTelegramBot(token, botToken);
+    bool result = await _botService.verifyTelegramBot(token, botToken);
     _isLoading = false;
     notifyListeners();
+    if (result) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
-  Future<void> verifySlackBot(
+  Future<bool> verifySlackBot(
     String token,
     String botToken,
     String clientId,
@@ -151,7 +162,7 @@ class BotProvider with ChangeNotifier {
   ) async {
     _isLoading = true;
     notifyListeners();
-    await _botService.verifySlackBot(
+    bool result = await _botService.verifySlackBot(
       token,
       botToken,
       clientId,
@@ -160,9 +171,14 @@ class BotProvider with ChangeNotifier {
     );
     _isLoading = false;
     notifyListeners();
+    if (result) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
-  Future<void> verifyMessengerBot(
+  Future<bool> verifyMessengerBot(
     String token,
     String botToken,
     String pageId,
@@ -170,9 +186,19 @@ class BotProvider with ChangeNotifier {
   ) async {
     _isLoading = true;
     notifyListeners();
-    await _botService.verifyMessengerBot(token, botToken, pageId, appSecret);
+    bool result = await _botService.verifyMessengerBot(
+      token,
+      botToken,
+      pageId,
+      appSecret,
+    );
     _isLoading = false;
     notifyListeners();
+    if (result) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   Future<void> publishTelegramBot(
