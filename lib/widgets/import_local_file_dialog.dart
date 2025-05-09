@@ -1,5 +1,8 @@
+import 'package:aichat/core/providers/knowledge_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:aichat/core/providers/user_token_provider.dart';
 
 class LocalFileImportDialog extends StatefulWidget {
   const LocalFileImportDialog({super.key});
@@ -9,13 +12,12 @@ class LocalFileImportDialog extends StatefulWidget {
 }
 
 class _LocalFileImportDialogState extends State<LocalFileImportDialog> {
-  PlatformFile? selectedFile;
+  List<PlatformFile> selectedFiles = [];
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles();
+  Future<void> _pickFiles() async {
+    final result = await FilePicker.platform.pickFiles(allowMultiple: true);
 
     if (result != null && result.files.isNotEmpty) {
-      final file = result.files.first;
       final allowedExtensions = [
         'c',
         'cpp',
@@ -33,20 +35,65 @@ class _LocalFileImportDialogState extends State<LocalFileImportDialog> {
         'txt',
       ];
 
-      // Get file extension
-      final fileExtension = file.name.split('.').last;
+      final validFiles =
+          result.files.where((file) {
+            final extension = file.name.split('.').last.toLowerCase();
+            return allowedExtensions.contains(extension);
+          }).toList();
 
-      if (allowedExtensions.contains(fileExtension)) {
-        setState(() {
-          selectedFile = file;
-        });
-      } else {
+      final invalidFiles = result.files.where((file) {
+        final extension = file.name.split('.').last.toLowerCase();
+        return !allowedExtensions.contains(extension);
+      });
+
+      if (invalidFiles.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: Unsupported file type (${file.name})'),
+          const SnackBar(
+            content: Text(
+              'Some files were not added due to unsupported format.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
+      }
+
+      final provider = Provider.of<KnowledgeProvider>(context, listen: false);
+      final token =
+          Provider.of<UserTokenProvider>(
+            context,
+            listen: false,
+          ).user?.accessToken;
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User token is not available.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      } else {
+        for (var file in validFiles) {
+          // Upload file and wait for response
+          final uploadedId = await provider.uploadLocalFile(token, file);
+
+          // Check and log response
+          if (uploadedId.isNotEmpty) {
+            debugPrint('Upload successful for ${file.name}. ID: $uploadedId');
+
+            setState(() {
+              selectedFiles.add(file);
+            });
+          } else {
+            debugPrint('Upload failed for ${file.name}');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Upload failed for ${file.name}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       }
     }
   }
@@ -61,7 +108,7 @@ class _LocalFileImportDialogState extends State<LocalFileImportDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Title
+            // Title bar
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -79,23 +126,24 @@ class _LocalFileImportDialogState extends State<LocalFileImportDialog> {
             ),
             const SizedBox(height: 16),
 
-            // Upload Box
+            // Upload box
             GestureDetector(
-              onTap: _pickFile,
+              onTap: _pickFiles,
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 32),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.grey.shade300,
-                    style: BorderStyle.solid,
-                  ),
+                  border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.upload, size: 36, color: Colors.blue.shade400),
+                    Icon(
+                      Icons.upload_file,
+                      size: 36,
+                      color: Colors.blue.shade400,
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'Click or drag files to upload',
@@ -108,18 +156,45 @@ class _LocalFileImportDialogState extends State<LocalFileImportDialog> {
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey),
                     ),
-                    if (selectedFile != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        selectedFile!.name,
-                        style: const TextStyle(color: Colors.black87),
-                      ),
-                    ],
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // List of selected files
+            if (selectedFiles.isNotEmpty) ...[
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Selected Files:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 150,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: selectedFiles.length,
+                  itemBuilder: (context, index) {
+                    final file = selectedFiles[index];
+                    return ListTile(
+                      title: Text(file.name),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            selectedFiles.removeAt(index);
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Action buttons
             Row(
@@ -127,19 +202,19 @@ class _LocalFileImportDialogState extends State<LocalFileImportDialog> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Back'),
+                  child: const Text('Cancel'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed:
-                      selectedFile != null
+                      selectedFiles.isNotEmpty
                           ? () {
-                            Navigator.of(context).pop(selectedFile);
+                            Navigator.of(context).pop(selectedFiles);
                           }
                           : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
-                        selectedFile != null
+                        selectedFiles.isNotEmpty
                             ? Theme.of(context).primaryColor
                             : Colors.grey.shade300,
                   ),

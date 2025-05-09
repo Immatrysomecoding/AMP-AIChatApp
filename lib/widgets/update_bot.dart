@@ -1,5 +1,6 @@
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/widgets/confirm_removal_dialog.dart';
+import 'package:aichat/widgets/publishing_bots.dart';
 import 'package:flutter/material.dart';
 import 'package:aichat/core/models/Knowledge.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
@@ -199,7 +200,8 @@ class _UpdateBotState extends State<UpdateBot> {
                                         builder: (context) {
                                           return ConfirmRemoveDialog(
                                             title: 'Remove Knowledge',
-                                            content: "Are you sure you want to remove this knowledge source?",
+                                            content:
+                                                "Are you sure you want to remove this knowledge source?",
                                             onCancel:
                                                 () =>
                                                     Navigator.of(context).pop(),
@@ -386,6 +388,29 @@ class _UpdateBotState extends State<UpdateBot> {
                             }
                             : null,
                     child: const Text("Save Changes"),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) =>
+                                  PublishScreen(), // Replace with your widget
+                        ),
+                      );
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.publish),
+                        const SizedBox(
+                          width: 8,
+                        ), // Add spacing between the icon and text
+                        const Text("Publish Bot"),
+                      ],
+                    ),
                   ),
                 ],
               ),

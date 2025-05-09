@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http_parser/http_parser.dart';
+import 'dart:io';
 
 class KnowledgeService {
   String baseUrl = dotenv.env['KNOWLEDGE_URL'] ?? '';
@@ -185,6 +186,44 @@ class KnowledgeService {
     }
   }
 
+  Future<String> uploadLocalFile(String token, PlatformFile file) async {
+    var headers = {'Authorization': 'Bearer $token', 'x-jarvis-guid': ''};
+
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/knowledge/files'),
+    );
+
+    request.headers.addAll(headers);
+
+    if (file.bytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes('files', file.bytes!, filename: file.name),
+      );
+    } else {
+      throw Exception(
+        "file.bytes is null. This won't work on web unless you pick bytes.",
+      );
+    }
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 201) {
+      final responseBody = await response.stream.bytesToString();
+      print("response body: $responseBody");
+      print("Status code: ${response.statusCode}");
+      final decoded = json.decode(responseBody);
+      print("Decoded: $decoded");
+      return decoded['id'];
+    } else {
+      print("Upload failed");
+      print("Status code: ${response.statusCode}");
+      final errorBody = await response.stream.bytesToString();
+      print("Error body: $errorBody");
+      return "";
+    }
+  }
+
   // String _getMimeType(String ext) {
   //   switch (ext.toLowerCase()) {
   //     case 'pdf':
@@ -214,99 +253,46 @@ class KnowledgeService {
   //   }
   // }
 
-  Future<void> uploadLocalFileToKnowledge({
-    required String token,
-    required String knowledgeId,
-    required PlatformFile file,
-  }) async {
-    // Step 1: Upload file to get fileId
-    final uploadUri = Uri.parse('$baseUrl/kb-core/v1/knowledge/files');
-    final uploadRequest = http.MultipartRequest('POST', uploadUri);
-    uploadRequest.headers.addAll({'Authorization': 'Bearer $token'});
-
-    print("Here");
-
-    if (file.bytes != null) {
-      uploadRequest.files.add(
-        http.MultipartFile.fromBytes(
-          'files',
-          file.bytes!,
-          filename: file.name,
-          contentType: MediaType('application', 'octet-stream'),
-        ),
-      );
-    } else if (file.path != null) {
-      uploadRequest.files.add(
-        await http.MultipartFile.fromPath(
-          'files',
-          file.path!,
-          filename: file.name,
-          contentType: MediaType('application', 'octet-stream'),
-        ),
-      );
-    } else {
-      print('❌ Invalid file: no bytes or path.');
-      return;
-    }
-    print("File upload success");
-    print("File name: ${file.name}");
-    print("File path: ${file.path}");
-    print("File bytes: ${file.bytes}");
-    print("File size: ${file.size}");
-    print("File extension: ${file.extension}");
-    final uploadResponse = await uploadRequest.send();
-    final uploadBody = await uploadResponse.stream.bytesToString();
-
-    print("Upload response: $uploadBody");
-    print("Upload status code: ${uploadResponse.statusCode}");
-
-    final decoded = json.decode(uploadBody);
-    print('🟡 Decoded response: $decoded');
-
-    final fileList = decoded['files'];
-    if (fileList is! List || fileList.isEmpty || fileList[0]['id'] == null) {
-      print("❌ Invalid response structure or missing file ID.");
-      return;
-    }
-
-    final fileId = fileList[0]['id'];
-    print("✅ File uploaded. ID: $fileId");
-
-    // Step 2: Register uploaded file as knowledge datasource
-    final registerUri = Uri.parse(
-      '$baseUrl/kb-core/v1/knowledge/$knowledgeId/datasources',
-    );
-    final headers = {
-      'Authorization': 'Bearer $token',
+  Future<void> uploadLocalFilesToKnowledge(
+    String token,
+    String knowledgeId,
+    List<PlatformFile> files,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer ',
       'Content-Type': 'application/json',
-      'x-jarvis-guid': '', // optional, include if needed
     };
-
-    final body = json.encode({
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/knowledge/$knowledgeId/datasources'),
+    );
+    request.body = json.encode({
       "datasources": [
         {
+          "name": "string",
           "type": "local_file",
-          "name": file.name,
-          "credentials": {"file": fileId},
+          "credentials": {
+            "email": "string",
+            "file": "string",
+            "info": {},
+            "password": "string",
+            "token": "string",
+            "url": "string",
+            "username": "string",
+            "type": "string",
+          },
         },
       ],
     });
+    request.headers.addAll(headers);
 
-    final request =
-        http.Request('POST', registerUri)
-          ..headers.addAll(headers)
-          ..body = body;
+    http.StreamedResponse response = await request.send();
 
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
-
-    if (response.statusCode == 201) {
-      print("✅ File linked to knowledge base.");
-      print(responseBody);
+    if (response.statusCode == 200) {
+      print(await response.stream.bytesToString());
     } else {
-      print("❌ Linking failed");
-      print("Status code: ${response.statusCode}");
-      print("Error body: $responseBody");
+      print(response.reasonPhrase);
     }
   }
 
@@ -385,9 +371,7 @@ class KnowledgeService {
       ),
     );
     // might get rid of this later
-    request.body = json.encode({
-      "status": !unitStatus,
-    });
+    request.body = json.encode({"status": !unitStatus});
     request.headers.addAll(headers);
 
     http.StreamedResponse response = await request.send();
@@ -402,7 +386,11 @@ class KnowledgeService {
     }
   }
 
-  Future<void> deleteKnowledgeUnit(String token, String knowledgeId, String unitId) async {
+  Future<void> deleteKnowledgeUnit(
+    String token,
+    String knowledgeId,
+    String unitId,
+  ) async {
     var headers = {
       'x-jarvis-guid': '',
       'Content-Type': 'application/json',

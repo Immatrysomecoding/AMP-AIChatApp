@@ -95,17 +95,27 @@ class KnowledgeProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> uploadLocalFileToKnowledge(
+  Future<String> uploadLocalFile(String token, PlatformFile file) async {
+    _isLoading = true;
+    notifyListeners();
+    String fileId = await _knowledgeService.uploadLocalFile(token, file);
+    _isLoading = false;
+    notifyListeners();
+
+    return fileId;
+  }
+
+  Future<void> uploadLocalFilesToKnowledge(
     String token,
     String knowledgeId,
-    PlatformFile file,
+    List<PlatformFile> files,
   ) async {
     _isLoading = true;
     notifyListeners();
-    await _knowledgeService.uploadLocalFileToKnowledge(
-      token: token,
-      knowledgeId: knowledgeId,
-      file: file,
+    await _knowledgeService.uploadLocalFilesToKnowledge(
+      token,
+      knowledgeId,
+      files
     );
     _isLoading = false;
     notifyListeners();
@@ -129,7 +139,12 @@ class KnowledgeProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggleKnowledgeUnitStatus(String token, String knowledgeId, String unitId, bool unitStatus) async {
+  Future<void> toggleKnowledgeUnitStatus(
+    String token,
+    String knowledgeId,
+    String unitId,
+    bool unitStatus,
+  ) async {
     _isLoading = true;
     notifyListeners();
     await _knowledgeService.toggleKnowledgeUnitStatus(
@@ -142,14 +157,14 @@ class KnowledgeProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> deleteKnowledgeUnit(String token, String knowledgeId, String unitId) async {
+  Future<void> deleteKnowledgeUnit(
+    String token,
+    String knowledgeId,
+    String unitId,
+  ) async {
     _isLoading = true;
     notifyListeners();
-    await _knowledgeService.deleteKnowledgeUnit(
-      token,
-      knowledgeId,
-      unitId,
-    );
+    await _knowledgeService.deleteKnowledgeUnit(token, knowledgeId, unitId);
     _isLoading = false;
     notifyListeners();
   }

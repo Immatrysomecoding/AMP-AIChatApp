@@ -111,7 +111,7 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                                 _knowledgeUnitsFuture = _fetchKnowledgeUnits();
                               });
                             },
-                            onLocalFileImport: (file) {
+                            onLocalFileImport: (files) async {
                               final accessToken =
                                   Provider.of<UserTokenProvider>(
                                     safeContext,
@@ -119,20 +119,20 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                                   ).user?.accessToken ??
                                   '';
 
-                              // Call a new upload method for local files
-                              Provider.of<KnowledgeProvider>(
+                              await Provider.of<KnowledgeProvider>(
                                 safeContext,
                                 listen: false,
-                              ).uploadLocalFileToKnowledge(
+                              ).uploadLocalFilesToKnowledge(
                                 accessToken,
                                 widget.id,
-                                file,
+                                files,
                               );
 
                               setState(() {
                                 _knowledgeUnitsFuture = _fetchKnowledgeUnits();
                               });
                             },
+
                             onSlackSave: (name, slackToken) {
                               final accessToken =
                                   Provider.of<UserTokenProvider>(

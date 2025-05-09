@@ -15,7 +15,7 @@ class KnowledgeSourceDialog extends StatefulWidget {
   });
 
   final Function(String, String)? onWebsiteSave;
-  final Function(PlatformFile)? onLocalFileImport;
+  final Function(List<PlatformFile>)? onLocalFileImport;
   final Function(String, String)? onSlackSave;
   final Function(String, String, String, String)? onConfluenceSave;
 
@@ -66,17 +66,20 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
                     onTap: () async {
                       Navigator.of(
                         context,
-                      ).pop(); // Close the KnowledgeSourceDialog first
-                      final pickedFile = await showDialog<PlatformFile>(
-                        context: context,
-                        builder: (context) => const LocalFileImportDialog(),
-                      );
+                      ).pop(); // Close the source selection dialog first
 
-                      if (pickedFile != null) {
-                        widget.onLocalFileImport?.call(pickedFile);
+                      final selectedFiles =
+                          await showDialog<List<PlatformFile>>(
+                            context: context,
+                            builder: (_) => const LocalFileImportDialog(),
+                          );
+
+                      if (selectedFiles != null && selectedFiles.isNotEmpty) {
+                        widget.onLocalFileImport?.call(selectedFiles);
                       }
                     },
                   ),
+
                   _buildActiveTile(
                     icon: Icons.language,
                     title: 'Website',
@@ -123,8 +126,18 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
                         context: context,
                         builder:
                             (context) => ConfluenceImportDialog(
-                              onSubmit: (name, wikiPageUrl, username, apiToken) {
-                                widget.onConfluenceSave?.call(name, wikiPageUrl, username, apiToken);
+                              onSubmit: (
+                                name,
+                                wikiPageUrl,
+                                username,
+                                apiToken,
+                              ) {
+                                widget.onConfluenceSave?.call(
+                                  name,
+                                  wikiPageUrl,
+                                  username,
+                                  apiToken,
+                                );
                                 Navigator.of(context).pop();
                               },
                             ),
