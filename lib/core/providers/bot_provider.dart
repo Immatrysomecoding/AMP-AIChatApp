@@ -22,6 +22,13 @@ class BotProvider with ChangeNotifier {
     try {
       // Fetch your bots (mock or real API)
       _bots = await _botService.fetchBots(token);
+
+      // Ensure each bot has the correct ID
+      _bots =
+          _bots.map((bot) {
+            print("Fetched bot: ${bot.id} - ${bot.assistantName}");
+            return bot;
+          }).toList();
     } catch (e) {
       print('Error fetching bots: $e');
     } finally {
@@ -253,5 +260,55 @@ class BotProvider with ChangeNotifier {
     );
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<Map<String, dynamic>?> createThreadForBot(
+    String token,
+    String botId,
+    String firstMsg,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+
+    Map<String, dynamic>? result;
+    try {
+      result = await _botService.createThreadForBot(token, botId, firstMsg);
+    } catch (e) {
+      print("Error creating thread in provider: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> askBot(
+    String token,
+    String botId,
+    String msg,
+    String openAiThreadId,
+    String additionalInstruction, {
+    Function(String)? onChunkReceived,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    Map<String, dynamic>? result;
+    try {
+      result = await _botService.askBot(
+        token,
+        botId,
+        msg,
+        openAiThreadId,
+        additionalInstruction,
+        onChunkReceived: onChunkReceived,
+      );
+    } catch (e) {
+      print("Error asking bot in provider: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+    return result;
   }
 }

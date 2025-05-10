@@ -9,6 +9,7 @@ import 'package:aichat/core/models/AIModel.dart';
 import 'package:aichat/core/models/Prompt.dart';
 import 'package:aichat/widgets/prompt_library_overlay.dart';
 import 'package:aichat/utils/prompt_utils.dart';
+import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:aichat/widgets/message_bubble.dart';
 import 'package:aichat/widgets/prompt_input_overlay.dart';
 import 'dart:math';
@@ -27,11 +28,22 @@ class _ChatAreaState extends State<ChatArea> {
   final ScrollController _scrollController = ScrollController();
   bool _isFirstLoad = true;
   Prompt? _selectedPrompt;
+  bool _isShowingPromptSuggestions = false;
+  String _promptFilterText = '';
+  final FocusNode _inputFocusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _promptOverlay;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _messageController.addListener(_handleTextChange);
+    _inputFocusNode.addListener(() {
+      if (!_inputFocusNode.hasFocus) {
+        _hidePromptSuggestions();
+      }
+    });
   }
 
   void _loadData() async {
@@ -131,9 +143,146 @@ class _ChatAreaState extends State<ChatArea> {
 
   @override
   void dispose() {
+    _messageController.removeListener(_handleTextChange);
+    _inputFocusNode.dispose();
+    _hidePromptSuggestions();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleTextChange() {
+    final text = _messageController.text;
+
+    // Check if the text contains a slash command
+    if (text.contains('/')) {
+      final slashIndex = text.lastIndexOf('/');
+
+      // Only show suggestions if the slash is at the start or after a space
+      if (slashIndex == 0 || (slashIndex > 0 && text[slashIndex - 1] == ' ')) {
+        // Extract the filter text after the slash
+        final query = text.substring(slashIndex + 1);
+
+        setState(() {
+          _promptFilterText = query;
+          _isShowingPromptSuggestions = true;
+        });
+
+        _showPromptSuggestions();
+      } else {
+        _hidePromptSuggestions();
+      }
+    } else {
+      _hidePromptSuggestions();
+    }
+  }
+
+  void _showPromptSuggestions() {
+    // Remove existing overlay if it exists
+    _hidePromptSuggestions();
+
+    final promptProvider = Provider.of<PromptProvider>(context, listen: false);
+    final prompts = promptProvider.publicPrompts;
+
+    // Filter prompts based on the filter text
+    final filteredPrompts =
+        prompts.where((prompt) {
+          return prompt.title.toLowerCase().contains(
+            _promptFilterText.toLowerCase(),
+          );
+        }).toList();
+
+    // Only show overlay if we have prompts and if the text field has focus
+    if (filteredPrompts.isEmpty || !_inputFocusNode.hasFocus) return;
+
+    // Create the overlay
+    _promptOverlay = OverlayEntry(
+      builder: (context) {
+        return Positioned(
+          width: 400,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: const Offset(0, -10), // Position above the input field
+            child: Material(
+              elevation: 4,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: 300,
+                  maxWidth: MediaQuery.of(context).size.width * 0.8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'Prompts',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filteredPrompts.length,
+                        itemBuilder: (context, index) {
+                          final prompt = filteredPrompts[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(prompt.title),
+                            subtitle: Text(
+                              prompt.description ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () {
+                              // Clear the input and hide suggestions
+                              _messageController.text = '';
+                              _hidePromptSuggestions();
+
+                              // Show the prompt input dialog
+                              _showPromptInput(prompt);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    // Show the overlay
+    Overlay.of(context).insert(_promptOverlay!);
+  }
+
+  void _hidePromptSuggestions() {
+    if (_promptOverlay != null) {
+      _promptOverlay!.remove();
+      _promptOverlay = null;
+    }
+
+    if (_isShowingPromptSuggestions) {
+      setState(() {
+        _isShowingPromptSuggestions = false;
+      });
+    }
   }
 
   void _togglePromptLibrary() {
@@ -348,8 +497,8 @@ class _ChatAreaState extends State<ChatArea> {
 
     return Stack(
       children: [
-        // Main chat area
         Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Chat messages or welcome screen
             Expanded(
@@ -362,39 +511,51 @@ class _ChatAreaState extends State<ChatArea> {
                       ),
             ),
 
-            // Message area
+            // New Chat UI layout matching the image
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border(top: BorderSide(color: Colors.grey.shade200)),
               ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return Row(
-                    children: [
-                      // Let sidebar widgets shrink if needed
-                      Flexible(
-                        flex: 4,
-                        child: Wrap(
-                          spacing: 8,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            _buildModelSelector(aiModelProvider),
-
-                            ElevatedButton.icon(
-                              onPressed: _startNewChat,
-                              icon: const Icon(Icons.add, size: 16),
-                              label: const Text('New Chat'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+              child: Column(
+                children: [
+                  // Top row with buttons and controls
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10.0),
+                    child: Row(
+                      children: [
+                        // Left side: model selector and new chat button
+                        Expanded(
+                          child: Row(
+                            children: [
+                              _buildModelSelector(aiModelProvider),
+                              const SizedBox(width: 8),
+                              ElevatedButton.icon(
+                                onPressed: _startNewChat,
+                                icon: const Icon(Icons.add, size: 16),
+                                label: const Text('New Chat'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
+                          ),
+                        ),
 
+                        // Right side: prompt library and chat history icons
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: _togglePromptLibrary,
+                              color: Colors.grey,
+                              tooltip: 'Prompt Library',
+                            ),
                             IconButton(
                               icon: const Icon(Icons.history),
                               onPressed: () {
@@ -403,119 +564,95 @@ class _ChatAreaState extends State<ChatArea> {
                               color: Colors.grey,
                               tooltip: 'Chat History',
                             ),
-
-                            IconButton(
-                              icon: const Icon(Icons.add_circle_outline),
-                              onPressed: _togglePromptLibrary,
-                              color: Colors.grey,
-                              tooltip: 'Prompt Library',
-                            ),
                           ],
                         ),
-                      ),
-
-                      const SizedBox(width: 8),
-
-                      // Chat input field
-                      Expanded(
-                        flex: 6,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _messageController,
-                                  decoration: const InputDecoration(
-                                    hintText:
-                                        'Ask me anything, press \'/\' for prompts...',
-                                    border: InputBorder.none,
-                                    hintStyle: TextStyle(color: Colors.grey),
-                                  ),
-                                  maxLines: 1,
-                                  onSubmitted: (_) => _sendMessage(),
-                                  enabled: !chatProvider.isSendingMessage,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.attachment_outlined),
-                                onPressed:
-                                    chatProvider.isSendingMessage
-                                        ? null
-                                        : () {},
-                                color: Colors.grey,
-                                tooltip: 'Attach file',
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.code),
-                                onPressed:
-                                    chatProvider.isSendingMessage
-                                        ? null
-                                        : () {},
-                                color: Colors.grey,
-                                tooltip: 'Insert code',
-                              ),
-                              IconButton(
-                                icon:
-                                    chatProvider.isSendingMessage
-                                        ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  Colors.blue,
-                                                ),
-                                          ),
-                                        )
-                                        : const Icon(Icons.send),
-                                onPressed:
-                                    chatProvider.isSendingMessage
-                                        ? null
-                                        : _sendMessage,
-                                color: Colors.blue,
-                                tooltip: 'Send message',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-
-            // Token counter
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
-              color: Colors.white,
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.local_fire_department,
-                    color: Colors.orange,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${chatProvider.remainingUsage} tokens remaining',
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontWeight: FontWeight.bold,
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.upgrade, size: 16),
-                    label: const Text('Upgrade'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.blue),
+
+                  // Message input field
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: CompositedTransformTarget(
+                            link: _layerLink,
+                            child: TextField(
+                              controller: _messageController,
+                              focusNode: _inputFocusNode,
+                              decoration: InputDecoration(
+                                hintText:
+                                    "Ask me anything, press '/' for prompts...",
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              onSubmitted: (_) {
+                                _hidePromptSuggestions();
+                                _sendMessage();
+                              },
+                              enabled: !chatProvider.isSendingMessage,
+                              onTap: () {
+                                // Reshow suggestions if "/" is in text and field is tapped
+                                if (_messageController.text.contains('/')) {
+                                  _handleTextChange();
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+
+                        IconButton(
+                          icon: const Icon(Icons.attach_file),
+                          onPressed:
+                              chatProvider.isSendingMessage ? null : () {},
+                          color: Colors.grey,
+                        ),
+
+                        IconButton(
+                          icon: const Icon(Icons.code),
+                          onPressed:
+                              chatProvider.isSendingMessage ? null : () {},
+                          color: Colors.grey,
+                        ),
+
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: IconButton(
+                            icon:
+                                chatProvider.isSendingMessage
+                                    ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.blue,
+                                            ),
+                                      ),
+                                    )
+                                    : Icon(Icons.send, color: Colors.blue),
+                            onPressed:
+                                chatProvider.isSendingMessage
+                                    ? null
+                                    : () {
+                                      _hidePromptSuggestions();
+                                      _sendMessage();
+                                    },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -530,7 +667,7 @@ class _ChatAreaState extends State<ChatArea> {
           onPromptSelected: _handlePromptSelected,
         ),
 
-        // Use our improved prompt input overlay instead of the old one
+        // Prompt input overlay
         if (_selectedPrompt != null)
           PromptInputOverlay(
             isVisible: _isPromptInputOverlayVisible,
@@ -774,8 +911,9 @@ class _ChatAreaState extends State<ChatArea> {
 
         // Scroll to bottom button (show only when needed)
         if (_scrollController.hasClients &&
-            _scrollController.position.pixels <
-                _scrollController.position.maxScrollExtent - 200)
+            (_scrollController.position.maxScrollExtent > 0) &&
+            (_scrollController.position.pixels <
+                _scrollController.position.maxScrollExtent - 200))
           Positioned(
             right: 16,
             bottom: 16,
@@ -805,92 +943,64 @@ class _ChatAreaState extends State<ChatArea> {
   }
 
   Widget _buildModelSelector(AIModelProvider aiModelProvider) {
-  return PopupMenuButton<AIModel>(
-    enabled: !_isFirstLoad, // Disable when loading
-    offset: const Offset(0, 40),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          _isFirstLoad
-              ? SizedBox(
+    return PopupMenuButton<AIModel>(
+      enabled: !_isFirstLoad,
+      offset: const Offset(0, 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 4,
+      color: Colors.white,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 120, maxWidth: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _isFirstLoad
+                ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade300),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.blue.shade300,
+                    ),
                   ),
                 )
-              : _getModelIcon(aiModelProvider.selectedModel?.id ?? ''),
-          const SizedBox(width: 8),
-          // Wrap Text in Flexible to prevent overflow
-          Flexible(
-            child: Text(
-              _isFirstLoad
-                  ? 'Loading...'
-                  : (aiModelProvider.selectedModel?.name ?? 'Select AI'),
-              style: TextStyle(
-                color: _isFirstLoad ? Colors.grey : Colors.black87,
-                overflow: TextOverflow.ellipsis,  // Prevents overflow by adding ellipsis
+                : _getModelIcon(aiModelProvider.selectedModel?.id ?? ''),
+            const SizedBox(width: 8),
+            Flexible(
+              fit: FlexFit.loose,
+              child: Text(
+                _isFirstLoad
+                    ? 'Loading...'
+                    : (aiModelProvider.selectedModel?.name ?? 'Select AI'),
+                style: TextStyle(
+                  color: _isFirstLoad ? Colors.grey : Colors.black87,
+                  overflow: TextOverflow.ellipsis,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
               ),
-              maxLines: 1,  // Limit text to a single line
             ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.arrow_drop_down, size: 20, color: Colors.black87),
-        ],
-      ),
-    ),
-    itemBuilder: (BuildContext context) {
-      List<PopupMenuEntry<AIModel>> items = [
-        const PopupMenuItem<AIModel>(
-          enabled: false,
-          child: Text(
-            'Base AI Models',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+            const SizedBox(width: 8),
+            const Icon(Icons.arrow_drop_down, size: 20, color: Colors.black87),
+          ],
         ),
-      ];
-
-      // Add base AI models
-      final baseModels = aiModelProvider.availableModels
-          .where((model) => !model.id.startsWith('bot_'))
-          .toList();
-
-      for (var model in baseModels) {
-        items.add(
-          PopupMenuItem<AIModel>(
-            value: model,
-            child: Row(
-              children: [
-                _getModelIcon(model.id),
-                const SizedBox(width: 8),
-                Text(model.name),
-              ],
-            ),
-          ),
-        );
-      }
-
-      // Add custom bots if available
-      final customBots = aiModelProvider.availableModels
-          .where((model) => model.id.startsWith('bot_'))
-          .toList();
-
-      if (customBots.isNotEmpty) {
-        items.add(
+      ),
+      itemBuilder: (BuildContext context) {
+        // Create the popup menu with sections and styled items
+        List<PopupMenuEntry<AIModel>> items = [
           const PopupMenuItem<AIModel>(
             enabled: false,
+            height: 32,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
-              'Your Bots',
+              'Base AI Models',
               style: TextStyle(
                 color: Colors.grey,
                 fontSize: 12,
@@ -898,39 +1008,282 @@ class _ChatAreaState extends State<ChatArea> {
               ),
             ),
           ),
-        );
+        ];
 
-        for (var bot in customBots) {
+        // Add base AI models with icons
+        final baseModels =
+            aiModelProvider.availableModels
+                .where((model) => !model.id.startsWith('bot_'))
+                .toList();
+
+        for (var model in baseModels) {
           items.add(
             PopupMenuItem<AIModel>(
-              value: bot,
+              value: model,
+              height: 46,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  const Icon(Icons.smart_toy_outlined, color: Colors.blue),
-                  const SizedBox(width: 8),
-                  Text(bot.name),
+                  _getModelIconForDropdown(model.id),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      model.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
           );
         }
+
+        // Add custom bots section if available - ensure we have real bots, not placeholder ones
+        final customBots =
+            aiModelProvider.availableModels
+                .where((model) => model.id.startsWith('bot_'))
+                .toList();
+
+        // Always fetch the latest bots
+        _fetchUserBots();
+
+        // Only add the Your Bots section if we have actual bots
+        if (customBots.isNotEmpty) {
+          items.add(
+            const PopupMenuItem<AIModel>(
+              enabled: false,
+              height: 32,
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(
+                'Your Bots',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          );
+
+          for (var bot in customBots) {
+            // Skip any bot with a generic name like "Jarvis Bot"
+            if (bot.name.toLowerCase() == "jarvis bot") continue;
+
+            items.add(
+              PopupMenuItem<AIModel>(
+                value: bot,
+                height: 46,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: const BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.smart_toy_outlined,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        bot.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        }
+
+        return items;
+      },
+      onSelected: (AIModel model) {
+        _selectModel(model);
+      },
+    );
+  }
+
+  void _fetchUserBots() {
+    Future.delayed(Duration.zero, () async {
+      final userProvider = Provider.of<UserTokenProvider>(
+        context,
+        listen: false,
+      );
+      final accessToken = userProvider.user?.accessToken ?? '';
+
+      if (accessToken.isEmpty) return;
+
+      try {
+        // Fetch bots using BotProvider
+        final botProvider = Provider.of<BotProvider>(context, listen: false);
+        await botProvider.fetchBots(accessToken);
+
+        // Make sure we have actual bots before continuing
+        if (botProvider.bots.isEmpty) {
+          print("No bots found for user.");
+          return;
+        }
+
+        // Convert bots to AIModel format for the dropdown
+        List<AIModel> botModels =
+            botProvider.bots.map((bot) {
+              print(
+                "Creating AIModel for bot: ${bot.id} - ${bot.assistantName}",
+              );
+              return AIModel(
+                id: 'bot_${bot.id}', // Store the full bot ID
+                model: 'knowledge-base',
+                name: bot.assistantName,
+                description: bot.description,
+              );
+            }).toList();
+
+        // Update the AIModelProvider with these bots
+        final aiModelProvider = Provider.of<AIModelProvider>(
+          context,
+          listen: false,
+        );
+
+        // Filter out ALL existing bot models (to remove any "Jarvis Bot" placeholders)
+        List<AIModel> currentModels = aiModelProvider.availableModels;
+        List<AIModel> baseModels =
+            currentModels
+                .where((model) => !model.id.startsWith('bot_'))
+                .toList();
+
+        // Combine base models with fetched bot models
+        List<AIModel> updatedModels = [...baseModels, ...botModels];
+
+        // Update the models in the provider
+        aiModelProvider.updateAvailableModels(updatedModels);
+      } catch (e) {
+        print('Error fetching bots: $e');
       }
+    });
+  }
 
-      return items;
-    },
-    onSelected: (AIModel model) {
-      _selectModel(model);
-    },
-  );
-}
-
+  Widget _getModelIconForDropdown(String modelId) {
+    if (modelId.contains('gpt-4o-mini')) {
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black,
+        ),
+        child: const Center(
+          child: Text(
+            "G",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    } else if (modelId.contains('gpt-4o')) {
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.purple,
+        ),
+        child: const Center(
+          child: Text(
+            "G",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    } else if (modelId.contains('gemini-1.5-flash')) {
+      return const Icon(Icons.flight_takeoff, color: Colors.blue, size: 20);
+    } else if (modelId.contains('gemini-1.5-pro')) {
+      return const Icon(Icons.bolt, color: Colors.black, size: 20);
+    } else if (modelId.contains('claude-3-haiku')) {
+      return const Icon(Icons.auto_awesome, color: Colors.orange, size: 20);
+    } else if (modelId.contains('claude-3.5-sonnet')) {
+      return const Icon(Icons.auto_awesome, color: Colors.orange, size: 20);
+    } else if (modelId.contains('deepseek')) {
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.blue,
+        ),
+        child: const Center(
+          child: Icon(Icons.water_drop, color: Colors.white, size: 14),
+        ),
+      );
+    } else {
+      return const Icon(Icons.assistant, color: Colors.black87, size: 20);
+    }
+  }
 
   Widget _getModelIcon(String modelId) {
-    // Return appropriate icon based on model type
     if (modelId.contains('gpt-4o-mini')) {
-      return const Icon(Icons.circle, color: Colors.black, size: 20);
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black,
+        ),
+        child: const Center(
+          child: Text(
+            "G",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
     } else if (modelId.contains('gpt-4o')) {
-      return const Icon(Icons.circle, color: Colors.purple, size: 20);
+      return Container(
+        width: 24,
+        height: 24,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.purple,
+        ),
+        child: const Center(
+          child: Text(
+            "G",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
     } else if (modelId.contains('gemini-1.5-flash')) {
       return const Icon(Icons.flight_takeoff, color: Colors.blue, size: 20);
     } else if (modelId.contains('gemini-1.5-pro')) {
@@ -1042,34 +1395,6 @@ class _ChatAreaState extends State<ChatArea> {
                 decoration: BoxDecoration(
                   color: Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(24),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Token counter placeholder
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
-          color: Colors.white,
-          height: 44,
-          child: Row(
-            children: [
-              Container(
-                width: 100,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const Spacer(),
-              Container(
-                width: 80,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ],

@@ -13,6 +13,7 @@ class ChatProvider with ChangeNotifier {
   bool _isLoading = false;
   int _remainingUsage = 50;
   bool _isSendingMessage = false;
+  bool _isSelectedModelBot = false;
 
   List<AIModel> get availableModels => _availableModels;
   List<Conversation> get conversations => _conversations;
@@ -51,15 +52,28 @@ class ChatProvider with ChangeNotifier {
 
       // Set the new model
       _selectedModel = model;
+
+      // Identify if this is a bot model and extract the real bot ID
+      _isSelectedModelBot = model.id.startsWith('bot_');
+      if (_isSelectedModelBot) {
+        // Extract the actual bot ID by removing the 'bot_' prefix
+        _botId = model.id.substring(4); // 'bot_'.length == 4
+        print("Selected bot with ID: $_botId");
+      } else {
+        _botId = null;
+      }
+
       notifyListeners();
 
-      // Fetch conversations for the new model
-      await fetchConversations(token);
+      // For bots, don't try to fetch conversation history
+      if (!_isSelectedModelBot) {
+        // Only fetch conversations for regular models
+        await fetchConversations(token);
+      }
 
-      // If there was an active conversation, try to find a matching one for the new model
-      if (currentConversationId != null && currentConversationId.isNotEmpty) {
-        // For now, we'll just clear the current conversation
-        // In a real app, you might want to try to find a corresponding conversation for the new model
+      // Start with a fresh conversation for bots
+      if (_isSelectedModelBot) {
+        startNewConversation();
       }
     } catch (e) {
       print('Error setting model: $e');
@@ -68,8 +82,11 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
+  String? _botId;
+
   Future<void> fetchConversations(String token) async {
     if (_selectedModel == null) return;
+    if (_isSelectedModelBot) return; // Skip for bots
 
     _setLoading(true);
     try {
@@ -178,7 +195,14 @@ class ChatProvider with ChangeNotifier {
       startNewConversation();
     }
 
-    // Create a user message and add it locally first
+    // For bots, ensure we have the bot ID without the prefix
+    String assistantId = _isSelectedModelBot ? _botId! : _selectedModel!.id;
+    String modelType =
+        _isSelectedModelBot ? 'knowledge-base' : _selectedModel!.model;
+
+    print("Sending message to assistant ID: $assistantId (model: $modelType)");
+
+    // Create a user message with the correct assistant info
     final userMessage = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       content: content,
@@ -186,8 +210,8 @@ class ChatProvider with ChangeNotifier {
       files: files,
       createdAt: DateTime.now(),
       assistant: AIAssistant(
-        id: _selectedModel!.id,
-        model: _selectedModel!.model,
+        id: assistantId, // Use the correct ID
+        model: modelType,
         name: _selectedModel!.name,
       ),
     );
@@ -196,43 +220,60 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Send the message to the API
-      var response = <String, dynamic>{};
+      // Prepare messages for the API
+      List<ChatMessage> messagesToSend = _currentConversation!.messages;
 
-      try {
-        response = await _chatService.sendMessage(
-          token,
-          content,
-          files,
-          AIAssistant(
-            id: _selectedModel!.id,
-            model: _selectedModel!.model,
-            name: _selectedModel!.name,
-          ),
-          _currentConversation!.messages,
-          _currentConversation!.id.isNotEmpty ? _currentConversation!.id : null,
-        );
-      } catch (apiError) {
-        print('API error when sending message: $apiError');
-        // Continue with the local conversation even if API fails
-        // We'll handle this below by adding an error message
-        throw apiError;
+      // Ensure the assistant ID is consistent in all messages
+      if (_isSelectedModelBot) {
+        messagesToSend =
+            messagesToSend.map((m) {
+              return ChatMessage(
+                id: m.id,
+                content: m.content,
+                role: m.role,
+                files: m.files,
+                createdAt: m.createdAt,
+                assistant: AIAssistant(
+                  id: assistantId, // Use consistent ID
+                  model: modelType,
+                  name: _selectedModel!.name,
+                ),
+              );
+            }).toList();
       }
+
+      var response = await _chatService.sendMessage(
+        token,
+        content,
+        files,
+        AIAssistant(
+          id: assistantId, // Use the correct ID
+          model: modelType,
+          name: _selectedModel!.name,
+        ),
+        messagesToSend,
+        _isSelectedModelBot
+            ? null
+            : (_currentConversation!.id.isNotEmpty
+                ? _currentConversation!.id
+                : null),
+      );
 
       // Update remaining usage
       if (response.containsKey('remainingUsage')) {
         _remainingUsage = response['remainingUsage'];
       }
 
-      // If this is a new conversation, update the conversation ID and title
-      if (_currentConversation!.id.isEmpty &&
+      // Only update conversation ID for regular models (not bots)
+      if (!_isSelectedModelBot &&
+          _currentConversation!.id.isEmpty &&
           response.containsKey('conversationId')) {
         _currentConversation!.id = response['conversationId'];
         // Set the title to the first message content (shortened if needed)
         _currentConversation!.title =
             content.length > 30 ? '${content.substring(0, 27)}...' : content;
 
-        // Add this conversation to our list
+        // Add this conversation to our list (only for regular models)
         _conversations.insert(0, _currentConversation!);
       }
 
@@ -244,8 +285,8 @@ class ChatProvider with ChangeNotifier {
           role: 'model',
           createdAt: DateTime.now(),
           assistant: AIAssistant(
-            id: _selectedModel!.id,
-            model: _selectedModel!.model,
+            id: assistantId, // Use the correct ID
+            model: modelType,
             name: _selectedModel!.name,
           ),
         );
@@ -262,8 +303,8 @@ class ChatProvider with ChangeNotifier {
         role: 'system',
         createdAt: DateTime.now(),
         assistant: AIAssistant(
-          id: _selectedModel!.id,
-          model: _selectedModel!.model,
+          id: assistantId,
+          model: modelType,
           name: 'System',
         ),
       );
