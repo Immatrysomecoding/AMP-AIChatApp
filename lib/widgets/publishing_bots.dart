@@ -161,6 +161,7 @@ class _PublishScreenState extends State<PublishScreen> {
               child: Text('Cancel'),
             ),
             ElevatedButton(
+              child: Text('OK'),
               onPressed: () async {
                 String token = _telegramTokenController.text.trim();
                 if (token.isNotEmpty) {
@@ -174,29 +175,36 @@ class _PublishScreenState extends State<PublishScreen> {
                         listen: false,
                       ).user!.accessToken ??
                       '';
+
                   bool isVerified = await botProvider.verifyTelegramBot(
                     userToken,
                     token,
                   );
 
-                  setState(() {
-                    isTelegramVerified = isVerified;
-                  });
-                  if (isTelegramVerified) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Telegram Bot verified successfully!'),
-                      ),
-                    );
+                  if (isVerified) {
+                    if (mounted) {
+                      setState(() {
+                        isTelegramVerified = true;
+                      });
+                      Navigator.of(context).pop();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Telegram Bot verified successfully!'),
+                        ),
+                      );
+                    }
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to verify Telegram Bot.')),
-                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to verify Telegram Bot.'),
+                        ),
+                      );
+                    }
                   }
-                  Navigator.of(context).pop();
                 }
               },
-              child: Text('OK'),
             ),
           ],
         );
@@ -206,7 +214,7 @@ class _PublishScreenState extends State<PublishScreen> {
 
   void _showMessengerConfigDialog() {
     final callbackUrl =
-        'https://knowledge-api.jarvis.cx/kb-core/v1/hook/messenger/${widget.botId}';
+        'https://knowledge-api.dev.jarvis.cx/kb-core/v1/hook/messenger/${widget.botId}';
     const verifyToken = 'knowledge';
 
     showDialog(
@@ -293,7 +301,8 @@ class _PublishScreenState extends State<PublishScreen> {
               child: Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              child: Text('OK'),
+              onPressed: () async {
                 final token = _messengerTokenController.text.trim();
                 final pageId = _messengerPageIdController.text.trim();
                 final appSecret = _messengerAppSecretController.text.trim();
@@ -301,11 +310,40 @@ class _PublishScreenState extends State<PublishScreen> {
                 if (token.isNotEmpty &&
                     pageId.isNotEmpty &&
                     appSecret.isNotEmpty) {
-                  // Save logic here
-                  Navigator.of(context).pop();
+                  final accessToken =
+                      Provider.of<UserTokenProvider>(
+                        context,
+                        listen: false,
+                      ).user!.accessToken;
+
+                  final success = await Provider.of<BotProvider>(
+                    context,
+                    listen: false,
+                  ).verifyMessengerBot(accessToken, token, pageId, appSecret);
+
+                  if (success) {
+                    // refetch the bot configurations
+                    if (mounted) {
+                      setState(() {
+                        isMessengerVerified = true;
+                      });
+                      Navigator.of(context).pop();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Messenger Bot verified successfully!'),
+                        ),
+                      );
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Verification failed')),
+                      );
+                    }
+                  }
                 }
               },
-              child: Text('OK'),
             ),
           ],
         );
@@ -365,17 +403,17 @@ class _PublishScreenState extends State<PublishScreen> {
                   _buildCopySection(
                     label: 'OAuth2 Redirect URLs',
                     url:
-                        'https://knowledge-api.jarvis.cx/kb-core/v1/bot-integration/slack/auth/6ed67493-c04b-41e9-a7e8-cdd740de1d6c',
+                        'https://knowledge-api.dev.jarvis.cx/kb-core/v1/bot-integration/slack/auth/6ed67493-c04b-41e9-a7e8-cdd740de1d6c',
                   ),
                   _buildCopySection(
                     label: 'Event Request URL',
                     url:
-                        'https://knowledge-api.jarvis.cx/kb-core/v1/hook/slack/6ed67493-c04b-41e9-a7e8-cdd740de1d6c',
+                        'https://knowledge-api.dev.jarvis.cx/kb-core/v1/hook/slack/6ed67493-c04b-41e9-a7e8-cdd740de1d6c',
                   ),
                   _buildCopySection(
                     label: 'Slash Request URL',
                     url:
-                        'https://knowledge-api.jarvis.cx/kb-core/v1/hook/slack/slash/6ed67493-c04b-41e9-a7e8-cdd740de1d6c',
+                        'https://knowledge-api.dev.jarvis.cx/kb-core/v1/hook/slack/slash/6ed67493-c04b-41e9-a7e8-cdd740de1d6c',
                   ),
                   SizedBox(height: 20),
                   Text(
@@ -402,9 +440,59 @@ class _PublishScreenState extends State<PublishScreen> {
                 child: Text('Cancel'),
               ),
               TextButton(
-                onPressed: () {
-                  // Save or submit logic
-                  Navigator.pop(context);
+                onPressed: () async {
+                  final token = _slackTokenController.text.trim();
+                  final clientId = _clientIdController.text.trim();
+                  final clientSecret = _clientSecretController.text.trim();
+                  final signingSecret = _signingSecretController.text.trim();
+
+                  if (token.isEmpty ||
+                      clientId.isEmpty ||
+                      clientSecret.isEmpty ||
+                      signingSecret.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Please fill all fields')),
+                    );
+                    return;
+                  }
+
+                  final accessToken =
+                      Provider.of<UserTokenProvider>(
+                        context,
+                        listen: false,
+                      ).user!.accessToken;
+
+                  final success = await Provider.of<BotProvider>(
+                    context,
+                    listen: false,
+                  ).verifySlackBot(
+                    accessToken,
+                    token,
+                    clientId,
+                    clientSecret,
+                    signingSecret,
+                  );
+
+                  if (!mounted) return;
+
+                  if (success) {
+                    if (mounted) {
+                      setState(() {
+                        isSlackVerified = true;
+                      });
+                      Navigator.pop(context);
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Slack Bot verified successfully!'),
+                        ),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Verification failed')),
+                    );
+                  }
                 },
                 child: Text('OK'),
               ),
@@ -517,7 +605,20 @@ class _PublishScreenState extends State<PublishScreen> {
               selectedPlatforms.containsValue(true)
                   ? () {
                     if (selectedPlatforms['Slack'] == true) {
-                      _showSlackConfigDialog();
+                      Provider.of<BotProvider>(
+                        context,
+                        listen: false,
+                      ).publishSlackBot(
+                        Provider.of<UserTokenProvider>(
+                          context,
+                          listen: false,
+                        ).user!.accessToken,
+                        widget.botId,
+                        _slackTokenController.text,
+                        _clientIdController.text,
+                        _clientSecretController.text,
+                        _signingSecretController.text,
+                      );
                     } else if (selectedPlatforms['Telegram'] == true) {
                       Provider.of<BotProvider>(
                         context,
@@ -531,7 +632,19 @@ class _PublishScreenState extends State<PublishScreen> {
                         _telegramTokenController.text,
                       );
                     } else if (selectedPlatforms['Messenger'] == true) {
-                      _showMessengerConfigDialog();
+                      Provider.of<BotProvider>(
+                        context,
+                        listen: false,
+                      ).publishMessengerBot(
+                        Provider.of<UserTokenProvider>(
+                          context,
+                          listen: false,
+                        ).user!.accessToken,
+                        widget.botId,
+                        _messengerTokenController.text,
+                        _messengerPageIdController.text,
+                        _messengerAppSecretController.text,
+                      );
                     }
                   }
                   : null,
@@ -549,17 +662,49 @@ class _PublishScreenState extends State<PublishScreen> {
     final botConfigurations =
         Provider.of<BotProvider>(context).botConfigurations;
 
-    // Extract verified configurations for quick access
-    final Map<String, BotConfiguration> verifiedConfigs = {
-      for (var config in botConfigurations) config.type.toLowerCase(): config,
+    // Check if the platform config already exists in backend
+    final isTelegramExist = botConfigurations.any(
+      (config) => config.type.toLowerCase() == 'telegram',
+    );
+    final isMessengerExist = botConfigurations.any(
+      (config) => config.type.toLowerCase() == 'messenger',
+    );
+    final isSlackExist = botConfigurations.any(
+      (config) => config.type.toLowerCase() == 'slack',
+    );
+
+    // Determine if each is verified: either it exists OR was verified in-session
+    final isTelegramVerifiedFinal = isTelegramExist || isTelegramVerified;
+    final isMessengerVerifiedFinal = isMessengerExist || isMessengerVerified;
+    final isSlackVerifiedFinal = isSlackExist || isSlackVerified;
+
+    // Create a lookup map for redirect URLs
+    final Map<String, String> redirectUrls = {
+      for (var config in botConfigurations)
+        config.type.toLowerCase(): config.redirect ?? "https://www.google.com/",
     };
 
     return selectedPlatforms.keys.map((platform) {
       final platformKey = platform.toLowerCase();
-      final config = verifiedConfigs[platformKey];
-      final isVerified = config != null;
+
+      // Map platform to the final verified state
+      bool isVerified;
+      switch (platform) {
+        case 'Telegram':
+          isVerified = isTelegramVerifiedFinal;
+          break;
+        case 'Messenger':
+          isVerified = isMessengerVerifiedFinal;
+          break;
+        case 'Slack':
+          isVerified = isSlackVerifiedFinal;
+          break;
+        default:
+          isVerified = false;
+      }
+
       final redirectUrl =
-          config?.redirect != null ? config!.redirect : "https://www.google.com/";
+          redirectUrls[platformKey] ?? "https://www.google.com/";
 
       return CheckboxListTile(
         title: Row(
@@ -583,8 +728,6 @@ class _PublishScreenState extends State<PublishScreen> {
               ),
             ),
             Spacer(),
-
-            // Configure button (disabled if verified)
             TextButton(
               onPressed:
                   isVerified
@@ -600,19 +743,13 @@ class _PublishScreenState extends State<PublishScreen> {
                       },
               child: Text('Configure'),
             ),
-
-            // Disconnect button (always shown, but disabled if not verified)
             TextButton(
               onPressed: () => _disconnectBot(platformKey),
               child: Text('Disconnect'),
             ),
-
-            // Redirect button (always shown, disabled if not verified or no redirect)
             TextButton(
               onPressed:
-                  (isVerified && redirectUrl != null)
-                      ? () => launchUrl(Uri.parse(redirectUrl))
-                      : null,
+                  isVerified ? () => launchUrl(Uri.parse(redirectUrl)) : null,
               child: Text('Redirect'),
             ),
           ],

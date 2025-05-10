@@ -488,7 +488,7 @@ class BotService {
     };
     var request = http.Request(
       'POST',
-      Uri.parse('$baseUrl/kb-core/v1/bot-integration/slack/publish/'),
+      Uri.parse('$baseUrl/kb-core/v1/bot-integration/slack/validation'),
     );
     request.body = json.encode({
       "botToken": botToken,
@@ -503,12 +503,18 @@ class BotService {
     if (response.statusCode == 200) {
       print("Slack bot verified successfully");
       final responseBody = await response.stream.bytesToString();
-      final decoded = json.decode(responseBody);
-      if (decoded['ok'] == true) {
-        return true;
+      if (responseBody.isNotEmpty) {
+        final decoded = json.decode(responseBody);
+        if (decoded['ok'] == true) {
+          return true;
+        }
+      } else {
+        return true; // Assume success if no body returned but 200 OK
       }
     } else {
       print(response.reasonPhrase);
+      print("Failed to verify Slack bot: ${response.statusCode}");
+      print("Response Body: ${await response.stream.bytesToString()}");
     }
 
     return false;
@@ -539,10 +545,17 @@ class BotService {
     http.StreamedResponse response = await request.send();
 
     if (response.statusCode == 200) {
-      print(await response.stream.bytesToString());
+      print("Messenger bot verified successfully");
       final responseBody = await response.stream.bytesToString();
-      final decoded = json.decode(responseBody);
-      if (decoded['ok'] == true) {
+      print("Response Body: '$responseBody'");
+
+      if (responseBody.isNotEmpty) {
+        final decoded = json.decode(responseBody);
+        if (decoded['ok'] == true) {
+          return true;
+        }
+      } else {
+        // Assume success if no body returned but 200 OK
         return true;
       }
     } else {
