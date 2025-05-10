@@ -1,13 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:aichat/core/providers/chat_provider.dart';
-import 'package:aichat/core/providers/user_token_provider.dart';
-import 'package:aichat/core/models/ChatMessage.dart';
-import 'chat_history_card.dart';
-import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:aichat/core/providers/ai_model_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:aichat/core/providers/user_token_provider.dart';
+import 'package:intl/intl.dart';
+import 'dart:math' as Math;
 
 class ChatHistoryList extends StatefulWidget {
   const ChatHistoryList({super.key});
@@ -17,55 +14,113 @@ class ChatHistoryList extends StatefulWidget {
 }
 
 class _ChatHistoryListState extends State<ChatHistoryList> {
-  final TextEditingController _searchController = TextEditingController();
-  bool _isSelectionMode = false;
-  final List<String> _selectedChats = [];
   bool _isLoading = true;
+  List<Map<String, dynamic>> _conversations = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadChatHistory();
+
+    // Load conversations after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadConversations();
+    });
 
     _searchController.addListener(() {
-      setState(() {
-        // Trigger rebuild when search text changes
-      });
+      setState(() {}); // Refresh when search text changes
     });
   }
 
-  void _loadChatHistory() async {
+  Future<void> _loadConversations() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
     });
 
-    final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
-    final accessToken = userProvider.user?.accessToken ?? '';
+    try {
+      final userProvider = Provider.of<UserTokenProvider>(
+        context,
+        listen: false,
+      );
+      final token = userProvider.user?.accessToken ?? '';
 
-    if (accessToken.isNotEmpty) {
-      try {
-        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-
-        // Directly fetch conversations without model selection check
-        // This simplifies things for now
-        await chatProvider.fetchConversations(accessToken);
-
-        // Add debug logging
-        print("Loaded ${chatProvider.conversations.length} conversations");
-        for (var conv in chatProvider.conversations) {
-          print("Conversation: ${conv.id} - ${conv.title}");
-        }
-      } catch (e) {
-        print('Error loading chat history: $e');
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+      if (token.isEmpty) {
+        print("No access token available");
+        setState(() {
+          _isLoading = false;
+        });
+        return;
       }
-    } else {
-      print("No access token available");
+
+      print("Fetching conversations with token length: ${token.length}");
+
+      // Make a direct API call to fetch conversations
+      final url = Uri.parse(
+        'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations?assistantId=gpt-4o-mini&assistantModel=dify',
+      );
+
+      final headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+
+      print("Request URL: $url");
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final items = data['items'] ?? [];
+        print("API returned ${items.length} conversations");
+
+        List<Map<String, dynamic>> conversations = [];
+
+        for (var item in items) {
+          try {
+            final id = item['id'] ?? '';
+            final title = item['title'] ?? 'Conversation';
+            final createdAtString = item['createdAt'] ?? '';
+
+            // Parse the ISO date string
+            DateTime createdAt;
+            try {
+              createdAt = DateTime.parse(createdAtString);
+            } catch (e) {
+              // If date parsing fails, use current time
+              createdAt = DateTime.now();
+              print("Date parsing error for $id: $e");
+            }
+
+            // For debugging
+            print(
+              "Processing conversation: ID=$id, Title=$title, Date=$createdAtString",
+            );
+
+            conversations.add({
+              'id': id,
+              'title': title,
+              'createdAt': createdAt,
+            });
+          } catch (e) {
+            print("Error processing conversation: $e");
+          }
+        }
+
+        setState(() {
+          _conversations = conversations;
+          _isLoading = false;
+        });
+
+        print("Loaded ${_conversations.length} conversations");
+      } else {
+        print("API error: ${response.statusCode} - ${response.reasonPhrase}");
+        print("Response body: ${response.body}");
+
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Exception loading conversations: $e");
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -79,69 +134,67 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
       _isLoading = true;
     });
 
-    final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
-    final accessToken = userProvider.user?.accessToken ?? '';
-
-    if (accessToken.isEmpty) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Not logged in')));
-      return;
-    }
-
     try {
-      print("Loading conversation: $conversationId");
-      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      final userProvider = Provider.of<UserTokenProvider>(
+        context,
+        listen: false,
+      );
+      final token = userProvider.user?.accessToken ?? '';
 
-      // First, load the conversation messages
-      var headers = {
-        'x-jarvis-guid': '',
-        'Authorization': 'Bearer $accessToken',
-      };
+      if (token.isEmpty) {
+        print("No access token available");
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
 
-      var url = Uri.parse(
+      // Fetch the conversation messages
+      final url = Uri.parse(
         'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations/$conversationId/messages?assistantId=gpt-4o-mini&assistantModel=dify',
       );
 
-      print("Fetching from URL: $url");
+      final headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
 
-      var request = http.Request('GET', url);
-      request.headers.addAll(headers);
-
-      var response = await request.send();
+      print("Fetching messages for conversation: $conversationId");
+      final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = await response.stream.bytesToString();
-        print("Response data: $data");
-
-        final decoded = json.decode(data);
-        final items = decoded['items'] ?? [];
-
-        print("Found ${items.length} messages");
-
-        // Now load the conversation in the ChatProvider
-        await chatProvider.loadConversation(accessToken, conversationId);
-
-        // Navigate to chat screen
-        Navigator.pushReplacementNamed(context, '/chat');
-      } else {
+        final data = json.decode(response.body);
         print(
-          "Error loading conversation: ${response.statusCode} - ${response.reasonPhrase}",
+          "Conversation messages API response: ${response.body.substring(0, Math.min(200, response.body.length))}...",
         );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading conversation: ${response.statusCode}'),
-          ),
-        );
+
+        // Store the conversation details in a shared preference or pass directly to the chat screen
+        // For now, just navigate to the chat screen
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/chat',
+            arguments: {
+              'conversationId': conversationId,
+              'messages': data['items'] ?? [],
+            },
+          );
+        }
+      } else {
+        print("API error: ${response.statusCode} - ${response.reasonPhrase}");
+        print("Response body: ${response.body}");
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to load conversation messages')),
+          );
+        }
       }
     } catch (e) {
-      print("Exception loading conversation: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      print("Exception selecting conversation: $e");
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -151,240 +204,176 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
     }
   }
 
-  void _deleteSelectedConversations() async {
-    if (_selectedChats.isEmpty) return;
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateToCheck = DateTime(date.year, date.month, date.day);
 
-    // Show confirmation dialog
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Delete Conversations'),
-            content: Text(
-              'Are you sure you want to delete ${_selectedChats.length} conversation(s)?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('CANCEL'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('DELETE'),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-              ),
-            ],
-          ),
-    );
-
-    if (confirm == true) {
-      final userProvider = Provider.of<UserTokenProvider>(
-        context,
-        listen: false,
-      );
-      final accessToken = userProvider.user?.accessToken ?? '';
-
-      if (accessToken.isNotEmpty) {
-        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-
-        // Delete all selected conversations
-        for (final id in _selectedChats) {
-          await chatProvider.deleteConversation(accessToken, id);
-        }
-
-        // Exit selection mode
-        setState(() {
-          _isSelectionMode = false;
-          _selectedChats.clear();
-        });
-      }
+    if (dateToCheck == today) {
+      return 'Today, ${DateFormat('HH:mm').format(date)}';
+    } else if (dateToCheck == yesterday) {
+      return 'Yesterday, ${DateFormat('HH:mm').format(date)}';
+    } else {
+      return DateFormat('MMM d, yyyy').format(date);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final chatProvider = Provider.of<ChatProvider>(context);
-    final conversations = chatProvider.conversations;
-
-    // Filter conversations by search query
+    // Filter conversations based on search
+    final searchQuery = _searchController.text.toLowerCase();
     final filteredConversations =
-        conversations.where((conversation) {
-          if (_searchController.text.isEmpty) return true;
-
-          final searchTerm = _searchController.text.toLowerCase();
-          return conversation.title.toLowerCase().contains(searchTerm);
+        _conversations.where((conv) {
+          return searchQuery.isEmpty ||
+              conv['title'].toString().toLowerCase().contains(searchQuery);
         }).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.chat_bubble_outline,
-                color: Colors.white,
-                size: 28,
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Chat History',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              if (_isSelectionMode)
-                Row(
-                  children: [
-                    TextButton.icon(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      label: const Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                      onPressed:
-                          _selectedChats.isNotEmpty
-                              ? _deleteSelectedConversations
-                              : null,
-                    ),
-                    const SizedBox(width: 16),
-                    TextButton(
-                      onPressed: _toggleSelectionMode,
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Chat History',
+          style: TextStyle(color: Colors.white),
         ),
-
-        // Search bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search conversations...',
-              hintStyle: TextStyle(color: Colors.grey.shade500),
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-              filled: true,
-              fillColor: Colors.grey.shade800,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(50),
-                borderSide: BorderSide.none,
+        backgroundColor: Colors.black,
+      ),
+      backgroundColor: Colors.black,
+      body: Column(
+        children: [
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search conversations...',
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                prefixIcon: Icon(Icons.search, color: Colors.grey.shade400),
+                filled: true,
+                fillColor: Colors.grey.shade800,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
-              contentPadding: EdgeInsets.zero,
+              style: const TextStyle(color: Colors.white),
             ),
-            style: const TextStyle(color: Colors.white),
           ),
-        ),
 
-        // Selection info
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child:
-              _isSelectionMode
-                  ? Text(
-                    'Selected ${_selectedChats.length} conversation(s)',
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
+          // Status text
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              'Found ${filteredConversations.length} conversations',
+              style: TextStyle(color: Colors.grey.shade400),
+            ),
+          ),
+
+          // Conversation list
+          Expanded(
+            child:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : filteredConversations.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: filteredConversations.length,
+                      itemBuilder: (context, index) {
+                        final conversation = filteredConversations[index];
+                        return _buildConversationCard(conversation);
+                      },
                     ),
-                  )
-                  : Row(
-                    children: [
-                      Text(
-                        'You have ${filteredConversations.length} conversation(s)',
-                        style: TextStyle(color: Colors.grey.shade400),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed:
-                            filteredConversations.isNotEmpty
-                                ? _toggleSelectionMode
-                                : null,
-                        child: const Text(
-                          'Select',
-                          style: TextStyle(color: Colors.blue),
-                        ),
-                      ),
-                    ],
-                  ),
-        ),
-
-        // Chat list
-        Expanded(
-          child:
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : filteredConversations.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: filteredConversations.length,
-                    itemBuilder: (context, index) {
-                      final conversation = filteredConversations[index];
-                      final isSelected = _selectedChats.contains(
-                        conversation.id,
-                      );
-
-                      // Format date
-                      final formattedDate = _formatDate(conversation.createdAt);
-
-                      return ChatHistoryCard(
-                        title: conversation.title,
-                        lastMessage: formattedDate,
-                        isSelectionMode: _isSelectionMode,
-                        isSelected: isSelected,
-                        onTap: () {
-                          if (_isSelectionMode) {
-                            _toggleChatSelection(conversation.id);
-                          } else {
-                            _selectConversation(conversation.id);
-                          }
-                        },
-                        onLongPress: () {
-                          if (!_isSelectionMode) {
-                            _toggleSelectionMode();
-                            _toggleChatSelection(conversation.id);
-                          }
-                        },
-                      );
-                    },
-                  ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
-  void _createTestConversation() {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+  Widget _buildConversationCard(Map<String, dynamic> conversation) {
+    final id = conversation['id'] ?? '';
+    final title = conversation['title'] ?? 'Conversation';
+    final createdAt = conversation['createdAt'] ?? DateTime.now();
+    final formattedDate = _formatDate(createdAt);
 
-    // Start a new conversation - this should add one to the list
-    chatProvider.startNewConversation();
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      color: Colors.grey.shade900,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade800),
+      ),
+      child: InkWell(
+        onTap: () => _selectConversation(id),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade900.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.chat_bubble_outline,
+                  color: Colors.blue.shade400,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 16),
 
-    // Force a rebuild
-    setState(() {});
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 12,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          formattedDate,
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
 
-    // Check the result
-    print(
-      "After creating test conversation: ${chatProvider.conversations.length} conversations",
+              // Forward icon
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey.shade400,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Created a test conversation')));
   }
 
   Widget _buildEmptyState() {
@@ -397,7 +386,7 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
           Icon(
             isSearching ? Icons.search_off : Icons.chat_bubble_outline,
             size: 64,
-            color: Colors.grey.shade700,
+            color: Colors.grey.shade600,
           ),
           const SizedBox(height: 16),
           Text(
@@ -438,40 +427,6 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
         ],
       ),
     );
-  }
-
-  void _toggleSelectionMode() {
-    setState(() {
-      _isSelectionMode = !_isSelectionMode;
-      _selectedChats.clear();
-    });
-  }
-
-  void _toggleChatSelection(String conversationId) {
-    setState(() {
-      if (_selectedChats.contains(conversationId)) {
-        _selectedChats.remove(conversationId);
-      } else {
-        _selectedChats.add(conversationId);
-      }
-    });
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final dateToCheck = DateTime(date.year, date.month, date.day);
-
-    if (dateToCheck == today) {
-      return 'Today, ${DateFormat('HH:mm').format(date)}';
-    } else if (dateToCheck == yesterday) {
-      return 'Yesterday, ${DateFormat('HH:mm').format(date)}';
-    } else if (now.difference(date).inDays < 7) {
-      return DateFormat('EEEE, HH:mm').format(date); // e.g. "Monday, 14:30"
-    } else {
-      return DateFormat('MMM d, yyyy').format(date); // e.g. "Jan 14, 2023"
-    }
   }
 
   @override

@@ -197,38 +197,49 @@ class ChatService {
     List<ChatMessage> previousMessages, [
     String? conversationId,
   ]) async {
-    var headers = buildHeaders(token);
+    var headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
 
-    // Format previous messages
+    // Format the messages in the expected structure
     List<Map<String, dynamic>> formattedMessages =
-        previousMessages
-            .map(
-              (m) => {
-                'role': m.role,
-                'content': m.content,
-                'files': m.files,
-                'assistant': m.assistant.toJson(),
-              },
-            )
-            .toList();
+        previousMessages.map((msg) {
+          return {
+            'role': msg.role,
+            'content': msg.content,
+            'files': msg.files,
+            'assistant': {
+              'id': assistant.id,
+              'model': assistant.model,
+              'name': assistant.name,
+            },
+          };
+        }).toList();
 
+    // Build the request body according to the API spec
     var body = {
       'content': content,
       'files': files,
       'metadata': {
         'conversation': {'messages': formattedMessages},
       },
-      'assistant': assistant.toJson(),
+      'assistant': {
+        'id': assistant.id,
+        'model': assistant.model,
+        'name': assistant.name,
+      },
     };
 
-    if (conversationId != null) {
+    // Add conversationId if provided
+    if (conversationId != null && conversationId.isNotEmpty) {
       body['conversationId'] = conversationId;
     }
 
+    print("Sending request body: ${json.encode(body)}");
+
     try {
       var url = Uri.parse('$baseUrl/api/v1/ai-chat/messages');
-      print("Sending message to ${url.path}");
-      print("Request body: ${json.encode(body)}");
 
       var response = await http.post(
         url,
@@ -236,34 +247,25 @@ class ChatService {
         body: json.encode(body),
       );
 
+      print("Response status: ${response.statusCode}");
+      print("Response body: ${response.body}");
+
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print("Message sent successfully: ${response.body}");
-        return responseData;
-      } else {
-        print("❌ Failed to send message to ${url.path}");
-        print("Status: ${response.statusCode}");
-        print("Response: ${response.body}");
 
-        // Return a mock response instead of throwing to prevent UI flashes
+        // Extract the relevant data from the response
         return {
-          'conversationId':
-              conversationId ??
-              DateTime.now().millisecondsSinceEpoch.toString(),
-          'message': 'Server error occurred. Please try again later.',
-          'remainingUsage': 0,
+          'conversationId': responseData['conversationId'] ?? '',
+          'message': responseData['answer'] ?? responseData['message'] ?? '',
+          'remainingUsage': responseData['remainingUsage'] ?? 0,
         };
+      } else {
+        print("API error: ${response.statusCode} - ${response.body}");
+        throw Exception("API Error: ${response.statusCode}");
       }
     } catch (e) {
-      print("⚠️ Network exception when sending message: $e");
-
-      // Return a mock response for offline situations
-      return {
-        'conversationId':
-            conversationId ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        'message': 'Network error. Please check your connection.',
-        'remainingUsage': 0,
-      };
+      print("Network error in sendMessage: $e");
+      throw e;
     }
   }
 

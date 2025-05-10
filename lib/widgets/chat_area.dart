@@ -454,12 +454,8 @@ class _ChatAreaState extends State<ChatArea> {
     final accessToken = userProvider.user?.accessToken ?? '';
 
     if (accessToken.isEmpty) {
-      // Show login prompt if no access token
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in to send messages'),
-          duration: Duration(seconds: 3),
-        ),
+        const SnackBar(content: Text('Please log in to send messages')),
       );
       return;
     }
@@ -471,24 +467,18 @@ class _ChatAreaState extends State<ChatArea> {
     if (chatProvider.isSendingMessage) return;
 
     try {
-      // Send the message
-      await chatProvider.sendMessage(accessToken, message);
+      // Use the direct method instead of the service method
+      await chatProvider.sendMessageDirect(accessToken, message);
       await _fetchTokenUsage();
+
       // Scroll to bottom after sending
       _scrollToBottom();
     } catch (e) {
-      // This shouldn't happen with our improved error handling in the provider,
-      // but just in case, we'll handle it here too
       print('Unexpected error in _sendMessage: $e');
-
-      // Show a snackbar with the error
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
