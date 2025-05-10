@@ -14,6 +14,7 @@ import 'package:aichat/widgets/prompt_input_overlay.dart';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import 'dart:ui';
+import 'package:aichat/widgets/prompt_suggestion_overlay.dart';
 
 class ChatArea extends StatefulWidget {
   const ChatArea({super.key});
@@ -34,6 +35,8 @@ class _ChatAreaState extends State<ChatArea> {
   final FocusNode _inputFocusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _promptOverlay;
+  bool _isMenuVisible = false;
+  final GlobalKey _inputFieldKey = GlobalKey();
 
   @override
   void initState() {
@@ -182,7 +185,9 @@ class _ChatAreaState extends State<ChatArea> {
           _isShowingPromptSuggestions = true;
         });
 
-        _showPromptSuggestions();
+        if (!_isMenuVisible) {
+          _showPromptSuggestions();
+        }
       } else {
         _hidePromptSuggestions();
       }
@@ -191,140 +196,102 @@ class _ChatAreaState extends State<ChatArea> {
     }
   }
 
-  void _showPromptSuggestions() {
-    // Remove existing overlay if it exists
-    _hidePromptSuggestions();
-
+  List<PopupMenuEntry<Prompt>> _buildPromptMenuItems() {
     final promptProvider = Provider.of<PromptProvider>(context, listen: false);
-    final prompts = promptProvider.publicPrompts;
+    final publicPrompts = promptProvider.publicPrompts;
 
     // Filter prompts based on the filter text
     final filteredPrompts =
-        prompts.where((prompt) {
-          return prompt.title.toLowerCase().contains(
-            _promptFilterText.toLowerCase(),
-          );
-        }).toList();
-
-    // Only show overlay if we have prompts and if the text field has focus
-    if (filteredPrompts.isEmpty || !_inputFocusNode.hasFocus) return;
-
-    // Get the position of the text cursor to place the overlay right above it
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final textEditingValue = _messageController.value;
-    final TextPosition cursorPosition = TextPosition(
-      offset: textEditingValue.selection.baseOffset,
-    );
-
-    // Get text layout metrics to compute cursor position
-    final TextSpan textSpan = TextSpan(
-      text: textEditingValue.text,
-      style: const TextStyle(fontSize: 16), // Match TextField font size
-    );
-    final TextPainter textPainter = TextPainter(
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-
-    // Find the last "/" character position
-    final slashIndex = textEditingValue.text.lastIndexOf('/');
-    if (slashIndex < 0) return;
-
-    final slashPosition = TextPosition(offset: slashIndex);
-    final slashOffset = textPainter.getOffsetForCaret(slashPosition, Rect.zero);
-
-    // Create the overlay
-    _promptOverlay = OverlayEntry(
-      builder: (context) {
-        return Positioned(
-          // Position above the "/" character
-          left: slashOffset.dx,
-          bottom:
-              MediaQuery.of(context).size.height -
-              renderBox.localToGlobal(Offset.zero).dy -
-              40,
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              constraints: BoxConstraints(maxHeight: 300, maxWidth: 400),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade200),
+        publicPrompts
+            .where(
+              (prompt) => prompt.title.toLowerCase().contains(
+                _promptFilterText.toLowerCase(),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: filteredPrompts.length,
-                      itemBuilder: (context, index) {
-                        final prompt = filteredPrompts[index];
-                        // First item is highlighted by default
-                        final isSelected = index == 0;
+            )
+            .toList();
 
-                        return Material(
-                          color:
-                              isSelected
-                                  ? Colors.blue.shade50
-                                  : Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _selectPrompt(prompt),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 12.0,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    prompt.title,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      color:
-                                          isSelected
-                                              ? Colors.blue.shade700
-                                              : Colors.black,
-                                    ),
-                                  ),
-                                  if (prompt.description != null &&
-                                      prompt.description!.isNotEmpty)
-                                    Text(
-                                      prompt.description!,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade700,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+    if (filteredPrompts.isEmpty) {
+      return [
+        const PopupMenuItem<Prompt>(
+          enabled: false,
+          child: Text('No matching prompts found'),
+        ),
+      ];
+    }
+
+    // Limit to max 4 items
+    final displayPrompts =
+        filteredPrompts.length > 4
+            ? filteredPrompts.sublist(0, 4)
+            : filteredPrompts;
+
+    return displayPrompts.map((prompt) {
+      return PopupMenuItem<Prompt>(
+        value: prompt,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              prompt.title,
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
-          ),
+            if (prompt.description != null && prompt.description!.isNotEmpty)
+              Text(
+                prompt.description!,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  void _showPromptSuggestions() {
+    if (_isMenuVisible) return;
+    _isMenuVisible = true;
+
+    final promptProvider = Provider.of<PromptProvider>(context, listen: false);
+    final publicPrompts = promptProvider.publicPrompts;
+
+    // Filter prompts based on the filter text
+    final filteredPrompts =
+        publicPrompts
+            .where(
+              (prompt) => prompt.title.toLowerCase().contains(
+                _promptFilterText.toLowerCase(),
+              ),
+            )
+            .toList();
+
+    if (filteredPrompts.isEmpty) {
+      _isMenuVisible = false;
+      return;
+    }
+
+    // Show a dialog with transparent barrier so user can still interact with the field
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      barrierDismissible: true,
+      builder: (context) {
+        return PromptSuggestionDialog(
+          prompts: filteredPrompts,
+          onPromptSelected: (prompt) {
+            Navigator.of(context).pop(); // Close the dialog
+            _selectPrompt(prompt);
+          },
+          onDismiss: () {
+            Navigator.of(context).pop(); // Close the dialog
+            _hidePromptSuggestions();
+          },
         );
       },
-    );
-
-    // Store the filtered prompts for tab completion
-    _filteredPrompts = filteredPrompts;
-    _selectedPromptIndex = 0; // First prompt is selected by default
-
-    // Show the overlay
-    Overlay.of(context).insert(_promptOverlay!);
+    ).then((_) {
+      _isMenuVisible = false;
+    });
   }
 
   List<Prompt> _filteredPrompts = [];
@@ -332,25 +299,34 @@ class _ChatAreaState extends State<ChatArea> {
 
   // Method to select a prompt
   void _selectPrompt(Prompt prompt) {
-    // Clear the input and hide suggestions
-    _messageController.text = '';
-    _hidePromptSuggestions();
+    final text = _messageController.text;
+    final slashIndex = text.lastIndexOf('/');
 
-    // Show the prompt input dialog
-    _showPromptInput(prompt);
+    if (slashIndex >= 0) {
+      // Replace the slash command with the prompt content
+      final newText = text.substring(0, slashIndex) + prompt.content;
+      _messageController.text = newText;
+
+      // Position cursor at the end
+      _messageController.selection = TextSelection.fromPosition(
+        TextPosition(offset: newText.length),
+      );
+    }
+
+    // Show the prompt input overlay
+    setState(() {
+      _selectedPrompt = prompt;
+      _isPromptInputOverlayVisible = true;
+    });
+
+    _hidePromptSuggestions();
   }
 
   void _hidePromptSuggestions() {
-    if (_promptOverlay != null) {
-      _promptOverlay!.remove();
-      _promptOverlay = null;
-    }
-
-    if (_isShowingPromptSuggestions) {
-      setState(() {
-        _isShowingPromptSuggestions = false;
-      });
-    }
+    setState(() {
+      _isShowingPromptSuggestions = false;
+      _isMenuVisible = false;
+    });
   }
 
   void _togglePromptLibrary() {
@@ -665,6 +641,7 @@ class _ChatAreaState extends State<ChatArea> {
                             child: CompositedTransformTarget(
                               link: _layerLink,
                               child: TextField(
+                                key: _inputFieldKey,
                                 controller: _messageController,
                                 focusNode: _inputFocusNode,
                                 decoration: InputDecoration(
