@@ -323,6 +323,11 @@ class _ChatAreaState extends State<ChatArea> {
   }
 
   void _hidePromptSuggestions() {
+    if (_promptOverlay != null) {
+      _promptOverlay!.remove();
+      _promptOverlay = null;
+    }
+
     setState(() {
       _isShowingPromptSuggestions = false;
       _isMenuVisible = false;

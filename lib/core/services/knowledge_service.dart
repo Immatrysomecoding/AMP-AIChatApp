@@ -154,6 +154,54 @@ class KnowledgeService {
     }
   }
 
+  Future<void> uploadConfluenceToKnowledge(
+    String token,
+    String knowledgeId,
+    String unitName,
+    String wikiUrl,
+    String username,
+    String apiToken,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    var request = http.Request(
+      'POST',
+      Uri.parse('$baseUrl/kb-core/v1/knowledge/$knowledgeId/datasources'),
+    );
+    request.body = json.encode({
+      "datasources": [
+        {
+          "type": "confluence",
+          "name": unitName,
+          "credentials": {
+            "token": apiToken,
+            "url": wikiUrl,
+            "username": username,
+          },
+        },
+      ],
+    });
+    request.headers.addAll(headers);
+
+    http.StreamedResponse response = await request.send();
+
+    if (response.statusCode == 201) {
+      final responseBody = await response.stream.bytesToString();
+      print("response body: ${response.statusCode}");
+      print("Decoded: ${response.reasonPhrase}");
+      print("Upload confluence success");
+    } else {
+      final errorBody = await response.stream.bytesToString();
+      print("Upload confluence failed");
+      print("Status code: ${response.statusCode}");
+      print("Reason: ${response.reasonPhrase}");
+      print("Error body: $errorBody");
+    }
+  }
+
   Future<void> uploadWebSiteToKnowledge(
     String token,
     String knowledgeId,
