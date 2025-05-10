@@ -8,11 +8,12 @@ import 'package:aichat/core/models/ChatMessage.dart';
 import 'package:aichat/core/models/AIModel.dart';
 import 'package:aichat/core/models/Prompt.dart';
 import 'package:aichat/widgets/prompt_library_overlay.dart';
-import 'package:aichat/utils/prompt_utils.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:aichat/widgets/message_bubble.dart';
 import 'package:aichat/widgets/prompt_input_overlay.dart';
 import 'dart:math';
+import 'package:flutter/services.dart';
+import 'dart:ui';
 
 class ChatArea extends StatefulWidget {
   const ChatArea({super.key});
@@ -148,7 +149,20 @@ class _ChatAreaState extends State<ChatArea> {
     _hidePromptSuggestions();
     _messageController.dispose();
     _scrollController.dispose();
+
     super.dispose();
+  }
+
+  void _handleKeyPress() {
+    if (!_isShowingPromptSuggestions || _filteredPrompts.isEmpty) return;
+
+    // Is the Tab key held?
+    if (RawKeyboard.instance.keysPressed.contains(LogicalKeyboardKey.tab)) {
+      if (_selectedPromptIndex >= 0 &&
+          _selectedPromptIndex < _filteredPrompts.length) {
+        _selectPrompt(_filteredPrompts[_selectedPromptIndex]);
+      }
+    }
   }
 
   void _handleTextChange() {
@@ -195,72 +209,109 @@ class _ChatAreaState extends State<ChatArea> {
     // Only show overlay if we have prompts and if the text field has focus
     if (filteredPrompts.isEmpty || !_inputFocusNode.hasFocus) return;
 
+    // Get the position of the text cursor to place the overlay right above it
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final textEditingValue = _messageController.value;
+    final TextPosition cursorPosition = TextPosition(
+      offset: textEditingValue.selection.baseOffset,
+    );
+
+    // Get text layout metrics to compute cursor position
+    final TextSpan textSpan = TextSpan(
+      text: textEditingValue.text,
+      style: const TextStyle(fontSize: 16), // Match TextField font size
+    );
+    final TextPainter textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+
+    // Find the last "/" character position
+    final slashIndex = textEditingValue.text.lastIndexOf('/');
+    if (slashIndex < 0) return;
+
+    final slashPosition = TextPosition(offset: slashIndex);
+    final slashOffset = textPainter.getOffsetForCaret(slashPosition, Rect.zero);
+
     // Create the overlay
     _promptOverlay = OverlayEntry(
       builder: (context) {
         return Positioned(
-          width: 400,
-          child: CompositedTransformFollower(
-            link: _layerLink,
-            showWhenUnlinked: false,
-            offset: const Offset(0, -10), // Position above the input field
-            child: Material(
-              elevation: 4,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: 300,
-                  maxWidth: MediaQuery.of(context).size.width * 0.8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        'Prompts',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    Flexible(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: filteredPrompts.length,
-                        itemBuilder: (context, index) {
-                          final prompt = filteredPrompts[index];
-                          return ListTile(
-                            dense: true,
-                            title: Text(prompt.title),
-                            subtitle: Text(
-                              prompt.description ?? '',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () {
-                              // Clear the input and hide suggestions
-                              _messageController.text = '';
-                              _hidePromptSuggestions();
+          // Position above the "/" character
+          left: slashOffset.dx,
+          bottom:
+              MediaQuery.of(context).size.height -
+              renderBox.localToGlobal(Offset.zero).dy -
+              40,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: BoxConstraints(maxHeight: 300, maxWidth: 400),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: filteredPrompts.length,
+                      itemBuilder: (context, index) {
+                        final prompt = filteredPrompts[index];
+                        // First item is highlighted by default
+                        final isSelected = index == 0;
 
-                              // Show the prompt input dialog
-                              _showPromptInput(prompt);
-                            },
-                          );
-                        },
-                      ),
+                        return Material(
+                          color:
+                              isSelected
+                                  ? Colors.blue.shade50
+                                  : Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _selectPrompt(prompt),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 12.0,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    prompt.title,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color:
+                                          isSelected
+                                              ? Colors.blue.shade700
+                                              : Colors.black,
+                                    ),
+                                  ),
+                                  if (prompt.description != null &&
+                                      prompt.description!.isNotEmpty)
+                                    Text(
+                                      prompt.description!,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -268,8 +319,25 @@ class _ChatAreaState extends State<ChatArea> {
       },
     );
 
+    // Store the filtered prompts for tab completion
+    _filteredPrompts = filteredPrompts;
+    _selectedPromptIndex = 0; // First prompt is selected by default
+
     // Show the overlay
     Overlay.of(context).insert(_promptOverlay!);
+  }
+
+  List<Prompt> _filteredPrompts = [];
+  int _selectedPromptIndex = 0;
+
+  // Method to select a prompt
+  void _selectPrompt(Prompt prompt) {
+    // Clear the input and hide suggestions
+    _messageController.text = '';
+    _hidePromptSuggestions();
+
+    // Show the prompt input dialog
+    _showPromptInput(prompt);
   }
 
   void _hidePromptSuggestions() {
@@ -579,34 +647,50 @@ class _ChatAreaState extends State<ChatArea> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: CompositedTransformTarget(
-                            link: _layerLink,
-                            child: TextField(
-                              controller: _messageController,
-                              focusNode: _inputFocusNode,
-                              decoration: InputDecoration(
-                                hintText:
-                                    "Ask me anything, press '/' for prompts...",
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
+                          child: RawKeyboardListener(
+                            focusNode: FocusNode(),
+                            onKey: (RawKeyEvent event) {
+                              if (event is RawKeyDownEvent &&
+                                  event.logicalKey == LogicalKeyboardKey.tab &&
+                                  _isShowingPromptSuggestions &&
+                                  _filteredPrompts.isNotEmpty) {
+                                // Prevent default tab behavior and select the prompt
+                                _selectPrompt(
+                                  _filteredPrompts[_selectedPromptIndex],
+                                );
+                                // Prevent the event from being processed further
+                                return;
+                              }
+                            },
+                            child: CompositedTransformTarget(
+                              link: _layerLink,
+                              child: TextField(
+                                controller: _messageController,
+                                focusNode: _inputFocusNode,
+                                decoration: InputDecoration(
+                                  hintText:
+                                      "Ask me anything, press '/' for prompts...",
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
-                                hintStyle: TextStyle(
-                                  color: Colors.grey.shade600,
-                                ),
+                                onSubmitted: (_) {
+                                  _hidePromptSuggestions();
+                                  _sendMessage();
+                                },
+                                enabled: !chatProvider.isSendingMessage,
+                                onTap: () {
+                                  // Reshow suggestions if "/" is in text and field is tapped
+                                  if (_messageController.text.contains('/')) {
+                                    _handleTextChange();
+                                  }
+                                },
                               ),
-                              onSubmitted: (_) {
-                                _hidePromptSuggestions();
-                                _sendMessage();
-                              },
-                              enabled: !chatProvider.isSendingMessage,
-                              onTap: () {
-                                // Reshow suggestions if "/" is in text and field is tapped
-                                if (_messageController.text.contains('/')) {
-                                  _handleTextChange();
-                                }
-                              },
                             ),
                           ),
                         ),
