@@ -155,6 +155,30 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                                 _knowledgeUnitsFuture = _fetchKnowledgeUnits();
                               });
                             },
+
+                            onConfluenceSave: (name, wikiUrl, username, apiToken) {
+                              final accessToken =
+                                  Provider.of<UserTokenProvider>(
+                                    safeContext,
+                                    listen: false,
+                                  ).user?.accessToken ??
+                                  '';
+                              Provider.of<KnowledgeProvider>(
+                                safeContext,
+                                listen: false,
+                              ).uploadConfluenceToKnowledge(
+                                accessToken,
+                                widget.id,
+                                name,
+                                wikiUrl,
+                                username,
+                                apiToken,
+                              );
+
+                              setState(() {
+                                _knowledgeUnitsFuture = _fetchKnowledgeUnits();
+                              });
+                            },
                           ),
                     );
                   },

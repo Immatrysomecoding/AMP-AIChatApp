@@ -1,4 +1,3 @@
-import 'package:aichat/core/models/BotConfiguration.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:flutter/material.dart';
@@ -173,8 +172,7 @@ class _PublishScreenState extends State<PublishScreen> {
                       Provider.of<UserTokenProvider>(
                         context,
                         listen: false,
-                      ).user!.accessToken ??
-                      '';
+                      ).user!.accessToken;
 
                   bool isVerified = await botProvider.verifyTelegramBot(
                     userToken,

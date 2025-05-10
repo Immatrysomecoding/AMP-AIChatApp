@@ -139,6 +139,14 @@ class KnowledgeProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> uploadConfluenceToKnowledge(String token, String knowledgeId, String unitName, String wikiUrl, String username, String apiToken) async {
+    _isLoading = true;
+    notifyListeners();
+    await _knowledgeService.uploadConfluenceToKnowledge(token, knowledgeId, unitName, wikiUrl, username, apiToken);
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> toggleKnowledgeUnitStatus(
     String token,
     String knowledgeId,
