@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:aichat/core/models/ChatMessage.dart';
 import 'package:aichat/core/models/AIModel.dart';
 import 'package:aichat/core/services/chat_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ChatProvider with ChangeNotifier {
   final ChatService _chatService = ChatService();
@@ -85,29 +87,94 @@ class ChatProvider with ChangeNotifier {
   String? _botId;
 
   Future<void> fetchConversations(String token) async {
-    if (_selectedModel == null) return;
-    if (_isSelectedModelBot) return; // Skip for bots
+    if (_selectedModel == null) {
+      print("WARNING: No model selected in fetchConversations");
+      // Continue anyway for debugging
+    }
 
     _setLoading(true);
-    try {
-      _conversations = await _chatService.getConversations(
-        token,
-        _selectedModel!.id,
-        _selectedModel!.model,
-      );
 
-      // Sort conversations by date (newest first)
-      _conversations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    try {
+      print("Fetching conversations with token length: ${token.length}");
+
+      // Hardcode for testing
+      var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+
+      var url = Uri.parse(
+        'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations?assistantId=gpt-4o-mini&assistantModel=dify',
+      );
+      print("Fetching from URL: ${url.toString()}");
+
+      var request = http.Request('GET', url);
+      request.headers.addAll(headers);
+
+      var response = await request.send();
+
+      print("Response status code: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final responseBody = await response.stream.bytesToString();
+        print("Response body length: ${responseBody.length} characters");
+
+        final decoded = json.decode(responseBody);
+        List<dynamic> items = decoded['items'] ?? [];
+
+        print("Found ${items.length} conversations in API response");
+
+        List<Conversation> newConversations = [];
+
+        for (var item in items) {
+          try {
+            // Add assistant info to each conversation for compatibility
+            item['assistant'] = {
+              'id': _selectedModel?.id ?? 'gpt-4o-mini',
+              'model': _selectedModel?.model ?? 'dify',
+              'name': _selectedModel?.name ?? 'GPT-4o mini',
+            };
+
+            Conversation conv = Conversation.fromJson(item);
+            print(
+              "Successfully parsed conversation: ${conv.id} - ${conv.title}",
+            );
+            newConversations.add(conv);
+          } catch (e) {
+            print("Error parsing conversation item: $e");
+            print("Problematic item: $item");
+          }
+        }
+
+        // Update the conversations list
+        _conversations = newConversations;
+
+        // Sort conversations by date (newest first)
+        _conversations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        print("Updated provider with ${_conversations.length} conversations");
+      } else {
+        print(
+          'Error fetching conversations: ${response.statusCode} - ${response.reasonPhrase}',
+        );
+        _conversations = [];
+      }
     } catch (e) {
-      print('Error fetching conversations: $e');
+      print('Exception in fetchConversations: $e');
       _conversations = [];
     } finally {
       _setLoading(false);
+      notifyListeners(); // Make sure UI updates
     }
   }
 
+  void updateConversations(List<Conversation> newConversations) {
+    _conversations = newConversations;
+    notifyListeners();
+  }
+
   Future<void> loadConversation(String token, String conversationId) async {
-    if (_selectedModel == null) return;
+    if (_selectedModel == null) {
+      print("Warning: No model selected in loadConversation");
+      return;
+    }
 
     _setLoading(true);
     try {
@@ -127,19 +194,103 @@ class ChatProvider with ChangeNotifier {
             ),
       );
 
-      List<ChatMessage> messages = await _chatService.getConversationMessages(
-        token,
-        conversationId,
-        _selectedModel!.id,
-        _selectedModel!.model,
+      print(
+        "Loading messages for conversation: ${existingConversation.id} - ${existingConversation.title}",
       );
 
-      existingConversation.messages = messages;
-      _currentConversation = existingConversation;
-    } catch (e) {
-      print('Error loading conversation: $e');
+      // Fetch the messages from the API
+      var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
 
-      // Create empty conversation as fallback
+      var url = Uri.parse(
+        'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations/$conversationId/messages?assistantId=${_selectedModel!.id}&assistantModel=${_selectedModel!.model}',
+      );
+
+      var request = http.Request('GET', url);
+      request.headers.addAll(headers);
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        final responseBody = await response.stream.bytesToString();
+        print("Response body: $responseBody");
+
+        var responseData = json.decode(responseBody);
+        List<dynamic> items = responseData['items'] ?? [];
+
+        print("Found ${items.length} messages in API response");
+
+        List<ChatMessage> messages = [];
+
+        for (var item in items) {
+          // User message
+          var userMessage = ChatMessage(
+            id: item['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+            content: item['query'] ?? '',
+            role: 'user',
+            createdAt: DateTime.fromMillisecondsSinceEpoch(
+              (item['createdAt'] ??
+                      (DateTime.now().millisecondsSinceEpoch ~/ 1000)) *
+                  1000,
+            ),
+            files:
+                item['files'] != null ? List<String>.from(item['files']) : [],
+            assistant: AIAssistant(
+              id: _selectedModel!.id,
+              model: _selectedModel!.model,
+              name: _selectedModel!.name,
+            ),
+          );
+
+          // AI message
+          var aiMessage = ChatMessage(
+            id: "${DateTime.now().millisecondsSinceEpoch}_response",
+            content: item['answer'] ?? 'No response available',
+            role: 'model',
+            createdAt: DateTime.fromMillisecondsSinceEpoch(
+              (item['createdAt'] ??
+                          (DateTime.now().millisecondsSinceEpoch ~/ 1000)) *
+                      1000 +
+                  1,
+            ),
+            files: [],
+            assistant: AIAssistant(
+              id: _selectedModel!.id,
+              model: _selectedModel!.model,
+              name: _selectedModel!.name,
+            ),
+          );
+
+          messages.add(userMessage);
+          messages.add(aiMessage);
+        }
+
+        // Update the conversation with the messages
+        existingConversation.messages = messages;
+        _currentConversation = existingConversation;
+
+        print("Loaded ${messages.length} messages for conversation");
+      } else {
+        print(
+          "Error loading messages: ${response.statusCode} - ${response.reasonPhrase}",
+        );
+
+        // Fall back to an empty conversation
+        _currentConversation = Conversation(
+          id: conversationId,
+          title: 'Error loading conversation',
+          createdAt: DateTime.now(),
+          assistant: AIAssistant(
+            id: _selectedModel!.id,
+            model: _selectedModel!.model,
+            name: _selectedModel!.name,
+          ),
+          messages: [],
+        );
+      }
+    } catch (e) {
+      print("Exception in loadConversation: $e");
+
+      // Fall back to an empty conversation
       _currentConversation = Conversation(
         id: conversationId,
         title: 'Error loading conversation',
@@ -153,6 +304,7 @@ class ChatProvider with ChangeNotifier {
       );
     } finally {
       _setLoading(false);
+      notifyListeners();
     }
   }
 

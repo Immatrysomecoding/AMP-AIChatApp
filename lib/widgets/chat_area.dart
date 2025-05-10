@@ -15,6 +15,8 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:aichat/widgets/prompt_suggestion_overlay.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ChatArea extends StatefulWidget {
   const ChatArea({super.key});
@@ -37,11 +39,14 @@ class _ChatAreaState extends State<ChatArea> {
   OverlayEntry? _promptOverlay;
   bool _isMenuVisible = false;
   final GlobalKey _inputFieldKey = GlobalKey();
+  int _tokenUsage = 0;
+  int _tokenLimit = 50; // Default limit
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _fetchTokenUsage();
     _messageController.addListener(_handleTextChange);
     _inputFocusNode.addListener(() {
       if (!_inputFocusNode.hasFocus) {
@@ -96,6 +101,43 @@ class _ChatAreaState extends State<ChatArea> {
           _isFirstLoad = false;
         });
       }
+    }
+  }
+
+  Future<void> _fetchTokenUsage() async {
+    final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
+    final accessToken = userProvider.user?.accessToken ?? '';
+
+    if (accessToken.isEmpty) return;
+
+    try {
+      var headers = {
+        'x-jarvis-guid': '',
+        'Authorization': 'Bearer $accessToken',
+      };
+      var request = http.Request(
+        'GET',
+        Uri.parse('https://api.dev.jarvis.cx/api/v1/tokens/usage'),
+      );
+      request.headers.addAll(headers);
+
+      http.StreamedResponse response = await request.send();
+
+      if (response.statusCode == 200) {
+        final data = await response.stream.bytesToString();
+        final json = jsonDecode(data);
+
+        if (mounted) {
+          setState(() {
+            _tokenUsage = json['used'] ?? 0;
+            _tokenLimit = json['limit'] ?? 1000;
+          });
+        }
+      } else {
+        print('Error fetching token usage: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      print('Exception fetching token usage: $e');
     }
   }
 
@@ -431,7 +473,7 @@ class _ChatAreaState extends State<ChatArea> {
     try {
       // Send the message
       await chatProvider.sendMessage(accessToken, message);
-
+      await _fetchTokenUsage();
       // Scroll to bottom after sending
       _scrollToBottom();
     } catch (e) {
@@ -619,13 +661,15 @@ class _ChatAreaState extends State<ChatArea> {
                     ),
                   ),
 
-                  // Message input field
+                  // Message input field - INCREASED HEIGHT
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Row(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.end, // Align to bottom
                       children: [
                         Expanded(
                           child: RawKeyboardListener(
@@ -655,12 +699,16 @@ class _ChatAreaState extends State<ChatArea> {
                                   border: InputBorder.none,
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 20,
-                                    vertical: 12,
+                                    vertical: 16, // INCREASED PADDING
                                   ),
                                   hintStyle: TextStyle(
                                     color: Colors.grey.shade600,
                                   ),
                                 ),
+                                maxLines: 5, // INCREASED MAX LINES
+                                minLines: 2, // MINIMUM NUMBER OF LINES
+                                textAlignVertical:
+                                    TextAlignVertical.top, // Start from top
                                 onSubmitted: (_) {
                                   _hidePromptSuggestions();
                                   _sendMessage();
@@ -677,44 +725,82 @@ class _ChatAreaState extends State<ChatArea> {
                           ),
                         ),
 
-                        IconButton(
-                          icon: const Icon(Icons.attach_file),
-                          onPressed:
-                              chatProvider.isSendingMessage ? null : () {},
-                          color: Colors.grey,
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.attach_file),
+                              onPressed:
+                                  chatProvider.isSendingMessage ? null : () {},
+                              color: Colors.grey,
+                            ),
+
+                            IconButton(
+                              icon: const Icon(Icons.code),
+                              onPressed:
+                                  chatProvider.isSendingMessage ? null : () {},
+                              color: Colors.grey,
+                            ),
+
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                right: 8.0,
+                                bottom: 8.0,
+                              ),
+                              child: IconButton(
+                                icon:
+                                    chatProvider.isSendingMessage
+                                        ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.blue,
+                                                ),
+                                          ),
+                                        )
+                                        : Icon(Icons.send, color: Colors.blue),
+                                onPressed:
+                                    chatProvider.isSendingMessage
+                                        ? null
+                                        : () {
+                                          _hidePromptSuggestions();
+                                          _sendMessage();
+                                        },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Token usage and upgrade button
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Token usage
+                        Text(
+                          '$_tokenUsage / $_tokenLimit tokens used',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                          ),
                         ),
 
-                        IconButton(
-                          icon: const Icon(Icons.code),
-                          onPressed:
-                              chatProvider.isSendingMessage ? null : () {},
-                          color: Colors.grey,
-                        ),
-
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: IconButton(
-                            icon:
-                                chatProvider.isSendingMessage
-                                    ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              Colors.blue,
-                                            ),
-                                      ),
-                                    )
-                                    : Icon(Icons.send, color: Colors.blue),
-                            onPressed:
-                                chatProvider.isSendingMessage
-                                    ? null
-                                    : () {
-                                      _hidePromptSuggestions();
-                                      _sendMessage();
-                                    },
+                        // Upgrade button
+                        TextButton.icon(
+                          onPressed: () {
+                            // Handle upgrade action
+                          },
+                          icon: const Icon(Icons.rocket_launch, size: 16),
+                          label: const Text('Upgrade'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.blue,
                           ),
                         ),
                       ],

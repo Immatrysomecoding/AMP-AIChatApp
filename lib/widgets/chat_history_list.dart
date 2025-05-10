@@ -5,6 +5,9 @@ import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/core/models/ChatMessage.dart';
 import 'chat_history_card.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:aichat/core/providers/ai_model_provider.dart';
 
 class ChatHistoryList extends StatefulWidget {
   const ChatHistoryList({super.key});
@@ -40,23 +43,111 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
     final accessToken = userProvider.user?.accessToken ?? '';
 
     if (accessToken.isNotEmpty) {
-      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      await chatProvider.fetchConversations(accessToken);
-    }
+      try {
+        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
-    setState(() {
-      _isLoading = false;
-    });
+        // Directly fetch conversations without model selection check
+        // This simplifies things for now
+        await chatProvider.fetchConversations(accessToken);
+
+        // Add debug logging
+        print("Loaded ${chatProvider.conversations.length} conversations");
+        for (var conv in chatProvider.conversations) {
+          print("Conversation: ${conv.id} - ${conv.title}");
+        }
+      } catch (e) {
+        print('Error loading chat history: $e');
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      print("No access token available");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _selectConversation(String conversationId) async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
     final accessToken = userProvider.user?.accessToken ?? '';
 
-    if (accessToken.isNotEmpty) {
+    if (accessToken.isEmpty) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Not logged in')));
+      return;
+    }
+
+    try {
+      print("Loading conversation: $conversationId");
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      await chatProvider.loadConversation(accessToken, conversationId);
-      Navigator.pushReplacementNamed(context, '/chat');
+
+      // First, load the conversation messages
+      var headers = {
+        'x-jarvis-guid': '',
+        'Authorization': 'Bearer $accessToken',
+      };
+
+      var url = Uri.parse(
+        'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations/$conversationId/messages?assistantId=gpt-4o-mini&assistantModel=dify',
+      );
+
+      print("Fetching from URL: $url");
+
+      var request = http.Request('GET', url);
+      request.headers.addAll(headers);
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        final data = await response.stream.bytesToString();
+        print("Response data: $data");
+
+        final decoded = json.decode(data);
+        final items = decoded['items'] ?? [];
+
+        print("Found ${items.length} messages");
+
+        // Now load the conversation in the ChatProvider
+        await chatProvider.loadConversation(accessToken, conversationId);
+
+        // Navigate to chat screen
+        Navigator.pushReplacementNamed(context, '/chat');
+      } else {
+        print(
+          "Error loading conversation: ${response.statusCode} - ${response.reasonPhrase}",
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading conversation: ${response.statusCode}'),
+          ),
+        );
+      }
+    } catch (e) {
+      print("Exception loading conversation: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -275,6 +366,25 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
         ),
       ],
     );
+  }
+
+  void _createTestConversation() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+
+    // Start a new conversation - this should add one to the list
+    chatProvider.startNewConversation();
+
+    // Force a rebuild
+    setState(() {});
+
+    // Check the result
+    print(
+      "After creating test conversation: ${chatProvider.conversations.length} conversations",
+    );
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Created a test conversation')));
   }
 
   Widget _buildEmptyState() {

@@ -83,12 +83,21 @@ class Conversation {
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
+    // Debug output
+    print("Parsing conversation JSON: ${json['id']} - ${json['title']}");
+
     return Conversation(
       id: json['id'] ?? '',
       title: json['title'] ?? 'New Conversation',
       createdAt:
           json['createdAt'] != null
-              ? DateTime.fromMillisecondsSinceEpoch(json['createdAt'] * 1000)
+              ? DateTime.fromMillisecondsSinceEpoch(
+                (json['createdAt'] is int
+                        ? json['createdAt']
+                        : int.tryParse(json['createdAt'].toString()) ??
+                            (DateTime.now().millisecondsSinceEpoch ~/ 1000)) *
+                    1000,
+              )
               : DateTime.now(),
       assistant:
           json['assistant'] != null
@@ -102,7 +111,6 @@ class Conversation {
               : [],
     );
   }
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,
