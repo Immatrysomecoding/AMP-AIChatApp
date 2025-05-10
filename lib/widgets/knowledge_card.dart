@@ -30,27 +30,34 @@ class KnowledgeCard extends StatelessWidget {
         Navigator.of(context).push(
           PageRouteBuilder(
             opaque: false, // Makes background dimmable if desired
-            pageBuilder:
-                (_, __, ___) => Align(
-                  alignment: Alignment.centerRight,
-                  child: FractionallySizedBox(
-                    widthFactor: 0.6,
-                    heightFactor: 1,
-                    child: Material(
-                      elevation: 8,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        bottomLeft: Radius.circular(16),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: KnowledgeBaseDetail(
-                        id: id,
-                        title: title,
-                        description: subtitle,
-                      ),
+            pageBuilder: (context, _, __) {
+              final screenWidth = MediaQuery.of(context).size.width;
+              final isSmallScreen = screenWidth < 600;
+
+              return Align(
+                alignment: Alignment.centerRight,
+                child: FractionallySizedBox(
+                  widthFactor: isSmallScreen ? 1.0 : 0.6,
+                  heightFactor: 1,
+                  child: Material(
+                    elevation: 8,
+                    borderRadius:
+                        isSmallScreen
+                            ? BorderRadius.zero
+                            : const BorderRadius.only(
+                              topLeft: Radius.circular(16),
+                              bottomLeft: Radius.circular(16),
+                            ),
+                    clipBehavior: Clip.antiAlias,
+                    child: KnowledgeBaseDetail(
+                      id: id,
+                      title: title,
+                      description: subtitle,
                     ),
                   ),
                 ),
+              );
+            },
             transitionsBuilder: (_, animation, __, child) {
               final offsetAnimation = Tween<Offset>(
                 begin: const Offset(1.0, 0.0),

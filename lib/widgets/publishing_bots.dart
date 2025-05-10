@@ -707,53 +707,57 @@ class _PublishScreenState extends State<PublishScreen> {
           redirectUrls[platformKey] ?? "https://www.google.com/";
 
       return CheckboxListTile(
-        title: Row(
-          children: [
-            Image.asset('assets/$platformKey.png', width: 24, height: 24),
-            SizedBox(width: 8),
-            Text(platform),
-            SizedBox(width: 10),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: isVerified ? Colors.green[100] : Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                isVerified ? 'Verified' : 'Not Configured',
-                style: TextStyle(
-                  color: isVerified ? Colors.green : Colors.black87,
-                  fontSize: 12,
+        title: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              Image.asset('assets/$platformKey.png', width: 24, height: 24),
+              SizedBox(width: 8),
+              Text(platform),
+              SizedBox(width: 10),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isVerified ? Colors.green[100] : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  isVerified ? 'Verified' : 'Not Configured',
+                  style: TextStyle(
+                    color: isVerified ? Colors.green : Colors.black87,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-            ),
-            Spacer(),
-            TextButton(
-              onPressed:
-                  isVerified
-                      ? null
-                      : () {
-                        if (platform == 'Telegram') {
-                          _showTelegramConfigDialog();
-                        } else if (platform == 'Messenger') {
-                          _showMessengerConfigDialog();
-                        } else if (platform == 'Slack') {
-                          _showSlackConfigDialog();
-                        }
-                      },
-              child: Text('Configure'),
-            ),
-            TextButton(
-              onPressed: () => _disconnectBot(platformKey),
-              child: Text('Disconnect'),
-            ),
-            TextButton(
-              onPressed:
-                  isVerified ? () => launchUrl(Uri.parse(redirectUrl)) : null,
-              child: Text('Redirect'),
-            ),
-          ],
+              SizedBox(width: 8),
+              TextButton(
+                onPressed:
+                    isVerified
+                        ? null
+                        : () {
+                          if (platform == 'Telegram') {
+                            _showTelegramConfigDialog();
+                          } else if (platform == 'Messenger') {
+                            _showMessengerConfigDialog();
+                          } else if (platform == 'Slack') {
+                            _showSlackConfigDialog();
+                          }
+                        },
+                child: Text('Configure'),
+              ),
+              TextButton(
+                onPressed: () => _disconnectBot(platformKey),
+                child: Text('Disconnect'),
+              ),
+              TextButton(
+                onPressed:
+                    isVerified ? () => launchUrl(Uri.parse(redirectUrl)) : null,
+                child: Text('Redirect'),
+              ),
+            ],
+          ),
         ),
+
         value: selectedPlatforms[platform],
         onChanged:
             isVerified

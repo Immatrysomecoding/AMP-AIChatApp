@@ -106,10 +106,13 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
         AnimatedPositioned(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          right: widget.isVisible ? 0 : -500,
+          right: widget.isVisible ? 0 : -MediaQuery.of(context).size.width,
           top: 0,
           bottom: 0,
-          width: 500,
+          width:
+              MediaQuery.of(context).size.width < 600
+                  ? MediaQuery.of(context).size.width
+                  : 500,
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,

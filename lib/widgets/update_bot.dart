@@ -337,423 +337,439 @@ class _UpdateBotState extends State<UpdateBot> {
           onPressed: widget.onBack,
         ),
       ),
-      body: Row(
-        children: [
-          // Knowledge Base Column
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 600) {
+            // Small screen -> Tabs
+            return DefaultTabController(
+              length: 3,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Knowledge Base',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  const TabBar(
+                    tabs: [
+                      Tab(icon: Icon(Icons.storage), text: 'Knowledge'),
+                      Tab(icon: Icon(Icons.chat), text: 'Preview'),
+                      Tab(icon: Icon(Icons.settings), text: 'Settings'),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildKnowledgeBase(),
+                        _buildPreview(),
+                        _buildSettings(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            // Large screen -> Original layout
+            return Row(
+              children: [
+                Expanded(flex: 2, child: _buildKnowledgeBase()),
+                Expanded(flex: 3, child: _buildPreview()),
+                Expanded(flex: 2, child: _buildSettings()),
+              ],
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildKnowledgeBase() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Knowledge Base',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child:
+                _isLoadingKnowledge
+                    ? const Center(child: CircularProgressIndicator())
+                    : _importedKnowledge.isEmpty
+                    ? const Center(child: Text("No knowledge sources"))
+                    : ListView.builder(
+                      itemCount: _importedKnowledge.length,
+                      itemBuilder: (context, index) {
+                        final knowledge = _importedKnowledge[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.storage),
+                          title: Text(knowledge.knowledgeName),
+                          subtitle: Text(
+                            knowledge.description.isNotEmpty
+                                ? knowledge.description
+                                : 'No description',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return ConfirmRemoveDialog(
+                                    title: 'Remove Knowledge',
+                                    content:
+                                        "Are you sure you want to remove this knowledge source?",
+                                    onCancel: () => Navigator.of(context).pop(),
+                                    onConfirm: () async {
+                                      Navigator.of(
+                                        context,
+                                      ).pop(); // Close dialog
+
+                                      final botProvider =
+                                          Provider.of<BotProvider>(
+                                            context,
+                                            listen: false,
+                                          );
+                                      final tokenProvider =
+                                          Provider.of<UserTokenProvider>(
+                                            context,
+                                            listen: false,
+                                          );
+                                      final token =
+                                          tokenProvider.user?.accessToken ?? '';
+
+                                      if (token.isNotEmpty) {
+                                        await botProvider
+                                            .deleteKnowledgeFromBot(
+                                              token,
+                                              widget.botId,
+                                              knowledge.id,
+                                            );
+                                        _loadKnowledge(); // ✅ Refresh list
+                                      }
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+          ),
+          OutlinedButton.icon(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder:
+                    (context) => Dialog(
+                      child: KnowledgeBaseList(
+                        botId: widget.botId,
+                        importedKnowledge: _importedKnowledge,
+                      ),
+                    ),
+              ).then(
+                (_) => _loadKnowledge(),
+              ); // Reload knowledge when dialog closes
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add knowledge source'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreview() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Preview header
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Preview',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Preview the assistant's responses in a chat interface.",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+
+          // Chat container with messages
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  // Messages area
                   Expanded(
                     child:
-                        _isLoadingKnowledge
-                            ? const Center(child: CircularProgressIndicator())
-                            : _importedKnowledge.isEmpty
-                            ? const Center(child: Text("No knowledge sources"))
-                            : ListView.builder(
-                              itemCount: _importedKnowledge.length,
-                              itemBuilder: (context, index) {
-                                final knowledge = _importedKnowledge[index];
-                                return ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: const Icon(Icons.storage),
-                                  title: Text(knowledge.knowledgeName),
-                                  subtitle: Text(
-                                    knowledge.description.isNotEmpty
-                                        ? knowledge.description
-                                        : 'No description',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                        _messages.isEmpty
+                            ? const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.smart_toy,
+                                    size: 48,
+                                    color: Colors.grey,
                                   ),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return ConfirmRemoveDialog(
-                                            title: 'Remove Knowledge',
-                                            content:
-                                                "Are you sure you want to remove this knowledge source?",
-                                            onCancel:
-                                                () =>
-                                                    Navigator.of(context).pop(),
-                                            onConfirm: () async {
-                                              Navigator.of(
-                                                context,
-                                              ).pop(); // Close dialog
-
-                                              final botProvider =
-                                                  Provider.of<BotProvider>(
-                                                    context,
-                                                    listen: false,
-                                                  );
-                                              final tokenProvider = Provider.of<
-                                                UserTokenProvider
-                                              >(context, listen: false);
-                                              final token =
-                                                  tokenProvider
-                                                      .user
-                                                      ?.accessToken ??
-                                                  '';
-
-                                              if (token.isNotEmpty) {
-                                                await botProvider
-                                                    .deleteKnowledgeFromBot(
-                                                      token,
-                                                      widget.botId,
-                                                      knowledge.id,
-                                                    );
-                                                _loadKnowledge(); // ✅ Refresh list
-                                              }
-                                            },
-                                          );
-                                        },
-                                      );
-                                    },
+                                  SizedBox(height: 8),
+                                  Text("No messages yet"),
+                                  Text(
+                                    "Start a conversation to test your bot!",
+                                  ),
+                                ],
+                              ),
+                            )
+                            : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _messages.length,
+                              itemBuilder: (context, index) {
+                                final message = _messages[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16.0),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Avatar
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color:
+                                              message.isUser
+                                                  ? Colors.blue
+                                                  : Colors.grey.shade200,
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child:
+                                              message.isUser
+                                                  ? const Icon(
+                                                    Icons.person,
+                                                    size: 18,
+                                                    color: Colors.white,
+                                                  )
+                                                  : const Icon(
+                                                    Icons.smart_toy,
+                                                    size: 18,
+                                                    color: Colors.grey,
+                                                  ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Message content
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              message.senderName,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(message.content),
+                                            if (!message.isUser)
+                                              Align(
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                child: IconButton(
+                                                  icon: const Icon(
+                                                    Icons.copy,
+                                                    size: 16,
+                                                  ),
+                                                  onPressed: () {
+                                                    // Copy to clipboard
+                                                  },
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
                             ),
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder:
-                            (context) => Dialog(
-                              child: KnowledgeBaseList(
-                                botId: widget.botId,
-                                importedKnowledge: _importedKnowledge,
-                              ),
-                            ),
-                      ).then(
-                        (_) => _loadKnowledge(),
-                      ); // Reload knowledge when dialog closes
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add knowledge source'),
-                  ),
-                ],
-              ),
-            ),
-          ),
 
-          // Preview Column
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Preview header
+                  // New thread button
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Preview',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Text(
-                          "Preview the assistant's responses in a chat interface.",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
+                    padding: const EdgeInsets.all(8.0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.add),
+                        label: const Text('New Thread'),
+                        onPressed: () {
+                          setState(() {
+                            _messages = [];
+                            _currentThreadId = null;
+                          });
+                          _initializeThread();
+                        },
+                      ),
                     ),
                   ),
 
-                  // Chat container with messages
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        children: [
-                          // Messages area
-                          Expanded(
-                            child:
-                                _messages.isEmpty
-                                    ? const Center(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.smart_toy,
-                                            size: 48,
-                                            color: Colors.grey,
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text("No messages yet"),
-                                          Text(
-                                            "Start a conversation to test your bot!",
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                    : ListView.builder(
-                                      padding: const EdgeInsets.all(16),
-                                      itemCount: _messages.length,
-                                      itemBuilder: (context, index) {
-                                        final message = _messages[index];
-
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 16.0,
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              // Avatar
-                                              Container(
-                                                width: 32,
-                                                height: 32,
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      message.isUser
-                                                          ? Colors.blue
-                                                          : Colors
-                                                              .grey
-                                                              .shade200,
-                                                  borderRadius:
-                                                      BorderRadius.circular(16),
-                                                ),
-                                                child: Center(
-                                                  child:
-                                                      message.isUser
-                                                          ? const Icon(
-                                                            Icons.person,
-                                                            size: 18,
-                                                            color: Colors.white,
-                                                          )
-                                                          : const Icon(
-                                                            Icons.smart_toy,
-                                                            size: 18,
-                                                            color: Colors.grey,
-                                                          ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-
-                                              // Message content
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      message.senderName,
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(message.content),
-
-                                                    // Copy button for bot messages
-                                                    if (!message.isUser)
-                                                      Align(
-                                                        alignment:
-                                                            Alignment
-                                                                .centerRight,
-                                                        child: IconButton(
-                                                          icon: const Icon(
-                                                            Icons.copy,
-                                                            size: 16,
-                                                          ),
-                                                          onPressed: () {
-                                                            // Copy to clipboard
-                                                          },
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
-                          ),
-
-                          // New thread button
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: OutlinedButton.icon(
-                                icon: const Icon(Icons.add),
-                                label: const Text('New Thread'),
-                                onPressed: () {
-                                  // Clear the messages and start a new thread
-                                  setState(() {
-                                    _messages = [];
-                                    _currentThreadId = null;
-                                  });
-                                  _initializeThread();
-                                },
-                              ),
+                  // Chat input
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _messageController,
+                            decoration: const InputDecoration(
+                              hintText:
+                                  "Ask me anything, press '/' for prompts...",
+                              border: OutlineInputBorder(),
+                              isDense: true,
                             ),
+                            onSubmitted: (_) => _sendMessage(),
+                            enabled: !_isSending,
                           ),
-
-                          // Chat input
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _messageController,
-                                    decoration: const InputDecoration(
-                                      hintText:
-                                          "Ask me anything, press '/' for prompts...",
-                                      border: OutlineInputBorder(),
-                                      isDense: true,
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon:
+                              _isSending
+                                  ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
                                     ),
-                                    onSubmitted: (_) => _sendMessage(),
-                                    enabled: !_isSending,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  icon:
-                                      _isSending
-                                          ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                          : const Icon(Icons.send),
-                                  onPressed: _isSending ? null : _sendMessage,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                                  )
+                                  : const Icon(Icons.send),
+                          onPressed: _isSending ? null : _sendMessage,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          // Settings Column
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Settings',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Persona & Instructions',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    maxLines: 6,
-                    controller: _instructionsController,
-                    decoration: const InputDecoration(
-                      labelText: "Instructions",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
+  Widget _buildSettings() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Settings',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Persona & Instructions',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
 
-                  const SizedBox(height: 8),
+          TextField(
+            maxLines: 6,
+            controller: _instructionsController,
+            decoration: const InputDecoration(
+              labelText: "Instructions",
+              border: OutlineInputBorder(),
+            ),
+          ),
 
-                  TextField(
-                    maxLines: 6,
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: "Description",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed:
-                        _isSaveEnabled()
-                            ? () async {
-                              final botProvider = Provider.of<BotProvider>(
-                                context,
-                                listen: false,
-                              );
-                              String accessToken = getUserToken();
+          const SizedBox(height: 8),
 
-                              if (accessToken.isNotEmpty) {
-                                await botProvider.updateBot(
-                                  accessToken,
-                                  widget.botId,
-                                  _botName,
-                                  _instructions,
-                                  _description,
-                                );
+          TextField(
+            maxLines: 6,
+            controller: _descriptionController,
+            decoration: const InputDecoration(
+              labelText: "Description",
+              border: OutlineInputBorder(),
+            ),
+          ),
 
-                                // Update internal "initial" values so Save button disables
-                                setState(() {
-                                  _currentInitialDescription = _description;
-                                  _currentInitialInstructions = _instructions;
-                                  _initialBotName = _botName;
-                                });
+          const SizedBox(height: 8),
 
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Bot updated successfully.'),
-                                  ),
-                                );
-                              }
-                            }
-                            : null,
-                    child: const Text("Save Changes"),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
+          ElevatedButton(
+            onPressed:
+                _isSaveEnabled()
+                    ? () async {
+                      final botProvider = Provider.of<BotProvider>(
                         context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => PublishScreen(botId: widget.botId),
-                        ),
+                        listen: false,
                       );
-                    },
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.publish),
-                        SizedBox(width: 8),
-                        Text("Publish Bot"),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                      String accessToken = getUserToken();
+
+                      if (accessToken.isNotEmpty) {
+                        await botProvider.updateBot(
+                          accessToken,
+                          widget.botId,
+                          _botName,
+                          _instructions,
+                          _description,
+                        );
+
+                        setState(() {
+                          _currentInitialDescription = _description;
+                          _currentInitialInstructions = _instructions;
+                          _initialBotName = _botName;
+                        });
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Bot updated successfully.'),
+                          ),
+                        );
+                      }
+                    }
+                    : null,
+            child: const Text("Save Changes"),
+          ),
+
+          const SizedBox(height: 8),
+
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PublishScreen(botId: widget.botId),
+                ),
+              );
+            },
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.publish),
+                SizedBox(width: 8),
+                Text("Publish Bot"),
+              ],
             ),
           ),
         ],
