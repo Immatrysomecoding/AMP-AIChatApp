@@ -24,6 +24,7 @@ class _ConfluenceImportDialogState extends State<ConfluenceImportDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -110,6 +111,10 @@ class _ConfluenceImportDialogState extends State<ConfluenceImportDialog> {
           child: const Text('Back'),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
           onPressed:
               isFormValid
                   ? () async {

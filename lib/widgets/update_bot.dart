@@ -317,6 +317,7 @@ class _UpdateBotState extends State<UpdateBot> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
         title: Row(
           children: [
             Expanded(
@@ -460,6 +461,17 @@ class _UpdateBotState extends State<UpdateBot> {
                     ),
           ),
           OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 16,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             onPressed: () {
               showDialog(
                 context: context,
@@ -717,6 +729,14 @@ class _UpdateBotState extends State<UpdateBot> {
           const SizedBox(height: 8),
 
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             onPressed:
                 _isSaveEnabled()
                     ? () async {
@@ -755,6 +775,14 @@ class _UpdateBotState extends State<UpdateBot> {
           const SizedBox(height: 8),
 
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             onPressed: () {
               Navigator.push(
                 context,

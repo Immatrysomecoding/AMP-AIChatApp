@@ -105,24 +105,23 @@ class _KnowledgeListState extends State<KnowledgeList> {
   }
 
   void _confirmAndDeleteKnowledge(String knowledgeId) {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return ConfirmRemoveDialog(
-        title: "Delete Knowledge",
-        content: "Are you sure you want to delete this knowledge?",
-        onCancel: () {
-          Navigator.of(context).pop(); // Close dialog
-        },
-        onConfirm: () {
-          Navigator.of(context).pop(); // Close dialog before deleting
-          _deleteKnowledge(knowledgeId);
-        },
-      );
-    },
-  );
-}
-
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ConfirmRemoveDialog(
+          title: "Delete Knowledge",
+          content: "Are you sure you want to delete this knowledge?",
+          onCancel: () {
+            Navigator.of(context).pop(); // Close dialog
+          },
+          onConfirm: () {
+            Navigator.of(context).pop(); // Close dialog before deleting
+            _deleteKnowledge(knowledgeId);
+          },
+        );
+      },
+    );
+  }
 
   void _deleteKnowledge(String knowledgeId) {
     final knowledgeProvider = Provider.of<KnowledgeProvider>(
@@ -135,9 +134,9 @@ class _KnowledgeListState extends State<KnowledgeList> {
         _loadKnowledge();
       });
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Knowledge deleted successfully')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Knowledge deleted successfully')),
+    );
   }
 
   @override
@@ -147,7 +146,7 @@ class _KnowledgeListState extends State<KnowledgeList> {
 
     return Container(
       padding: const EdgeInsets.all(24),
-      color: const Color(0xFFF7FBFF),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -164,12 +163,12 @@ class _KnowledgeListState extends State<KnowledgeList> {
             controller: _searchController,
             decoration: InputDecoration(
               hintText: "Search knowledge base",
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Colors.grey.shade100,
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(50),
                 borderSide: BorderSide.none,
               ),
             ),
@@ -194,7 +193,8 @@ class _KnowledgeListState extends State<KnowledgeList> {
               icon: const Icon(Icons.add),
               label: const Text("Create Knowledge"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 16,

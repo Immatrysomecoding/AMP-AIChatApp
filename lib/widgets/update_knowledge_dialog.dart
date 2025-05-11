@@ -40,6 +40,7 @@ class _UpdateKnowledgeBaseDialogState extends State<UpdateKnowledgeBaseDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: const Text("Update Knowledge Base"),
       content: Form(
@@ -82,6 +83,10 @@ class _UpdateKnowledgeBaseDialogState extends State<UpdateKnowledgeBaseDialog> {
           child: const Text("Cancel"),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               widget.onSave!(

@@ -101,6 +101,7 @@ class _LocalFileImportDialogState extends State<LocalFileImportDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
       child: Padding(

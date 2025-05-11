@@ -20,6 +20,7 @@ class _WebsiteImportDialogState extends State<WebsiteImportDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -87,6 +88,10 @@ class _WebsiteImportDialogState extends State<WebsiteImportDialog> {
           child: const Text('Back'),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: isFormValid ? Colors.blue : Colors.grey.shade300,
+            foregroundColor: isFormValid ? Colors.white : Colors.grey,
+          ),
           onPressed:
               isFormValid
                   ? () async {

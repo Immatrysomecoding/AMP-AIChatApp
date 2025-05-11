@@ -558,7 +558,7 @@ class _PublishScreenState extends State<PublishScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Publish')),
+      appBar: AppBar(title: Text('Publish'), backgroundColor: Colors.white),
 
       body: Padding(
         padding: const EdgeInsets.all(16.0),

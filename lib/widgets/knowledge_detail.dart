@@ -1,5 +1,6 @@
 import 'package:aichat/widgets/add_knowledge_source.dart';
 import 'package:aichat/widgets/confirm_removal_dialog.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -57,7 +58,7 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(title: Text(widget.title), backgroundColor: Colors.white,),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -186,7 +187,8 @@ class _KnowledgeBaseDetailState extends State<KnowledgeBaseDetail> {
                   icon: const Icon(Icons.add),
                   label: const Text("Add Knowledge Unit"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6D72FA),
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white
                   ),
                 ),
               ],
@@ -340,6 +342,7 @@ class KnowledgeUnitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: Colors.white,
       child: ListTile(
         leading: _buildLeadingIcon(type),
         title: Text(unitName),

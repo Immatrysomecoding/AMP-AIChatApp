@@ -34,7 +34,11 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
     final isSmallScreen = MediaQuery.of(context).size.width < 360;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("AI Email Assistant")),
+      appBar: AppBar(
+        title: const Text("AI Email Assistant"),
+        backgroundColor: Colors.white,
+      ),
+      // color: Colors.white,
       body: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
@@ -48,13 +52,14 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
                     _buildTextField(
                       "Original Email",
                       emailController,
-                      maxLines: 5,
+                      maxLines: 4,
                     ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
                         Flexible(
                           child: RadioListTile(
+                            fillColor: WidgetStateProperty.all(Colors.blue),
                             title: Text(
                               "Full Reply",
                               style: TextStyle(
@@ -70,6 +75,7 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
                         ),
                         Flexible(
                           child: RadioListTile(
+                            fillColor: WidgetStateProperty.all(Colors.blue),
                             title: Text(
                               "Ideas",
                               style: TextStyle(
@@ -85,7 +91,7 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
                         ),
                       ],
                     ),
-                      _buildTextField("Main Idea", mainIdeaController),
+                    _buildTextField("Main Idea", mainIdeaController),
                     const Divider(),
                     _buildTextField("Subject", subjectController),
                     _buildTextField("Sender", senderController),
@@ -121,6 +127,17 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
                     const SizedBox(height: 12),
                     Center(
                       child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                         onPressed: _sendRequest,
                         child: const Text("Submit"),
                       ),

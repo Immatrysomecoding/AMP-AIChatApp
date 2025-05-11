@@ -29,6 +29,7 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
     final greyColor = Colors.grey.shade400;
 
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
       child: SizedBox(
