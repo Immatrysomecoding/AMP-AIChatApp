@@ -41,6 +41,8 @@ class _ChatAreaState extends State<ChatArea> {
   final GlobalKey _inputFieldKey = GlobalKey();
   int _tokenUsage = 0;
   int _tokenLimit = 50; // Default limit
+  bool _isUnlimited = false;
+  int _availableTokens = 0;
 
   @override
   void initState() {
@@ -129,8 +131,10 @@ class _ChatAreaState extends State<ChatArea> {
 
         if (mounted) {
           setState(() {
-            _tokenUsage = json['used'] ?? 0;
-            _tokenLimit = json['limit'] ?? 1000;
+            // Update to use available tokens directly
+            _availableTokens = json['availableTokens'] ?? 0;
+            _tokenLimit = json['totalTokens'] ?? 50;
+            _tokenUsage = (_tokenLimit - _availableTokens);
           });
         }
       } else {
@@ -767,19 +771,40 @@ class _ChatAreaState extends State<ChatArea> {
                     ),
                   ),
 
-                  // Token usage and upgrade button
+                  // Token usage and upgrade button - UPDATED to match screenshot
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Token usage
-                        Text(
-                          '$_tokenUsage / $_tokenLimit tokens used',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 13,
-                          ),
+                        // Tokens available with flame icon
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              color: Colors.blue,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              "${_availableTokens}",
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Infinity symbol
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.all_inclusive,
+                              color: Colors.grey.shade400,
+                              size: 16,
+                            ),
+                          ],
                         ),
 
                         // Upgrade button
