@@ -20,6 +20,16 @@ class PromptProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> fetchPublicFavoritePrompts(String token) async {
+    _publicPrompts = await _promptService.getPublicFavoritePrompts(token);
+    notifyListeners();
+  }
+
+  Future<void> fetchPrivateFavoritePrompts(String token) async {
+    _prompts = await _promptService.getPrivateFavoritePrompts(token);
+    notifyListeners();
+  }
+
   Future<void> addPrompt(
     String title,
     String content,

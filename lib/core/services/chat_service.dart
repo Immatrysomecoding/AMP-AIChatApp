@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'package:aichat/core/models/EmailResponse.dart';
 import 'package:http/http.dart' as http;
 import 'package:aichat/core/models/ChatMessage.dart';
 import 'package:aichat/core/models/AIModel.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:aichat/core/models/EmailRequest.dart';
 
 class ChatService {
   final String baseUrl = dotenv.env['CHAT_URL'] ?? '';
@@ -278,5 +280,102 @@ class ChatService {
           'This is a mock response because the server is currently unavailable.',
       'remainingUsage': 10,
     };
+  }
+
+  Future<EmailResponse> generateResponseEmail(
+    String token,
+    EmailRequest model,
+  ) async {
+    final headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    final requestBody = {
+      'mainIdea': model.mainIdea,
+      'action': model.action,
+      'email': model.email,
+      'metadata': {
+        'context': model.metadata.context,
+        'subject': model.metadata.subject,
+        'sender': model.metadata.sender,
+        'receiver': model.metadata.receiver,
+        'language': model.metadata.language,
+        if (model.metadata.style != null)
+          'style': {
+            'length': model.metadata.style!.length,
+            'formality': model.metadata.style!.formality,
+            'tone': model.metadata.style!.tone,
+          },
+      },
+    };
+
+    final request = http.Request('POST', Uri.parse('$baseUrl/api/v1/ai-email'));
+    request.headers.addAll(headers);
+    request.body = json.encode(requestBody);
+
+    final response = await request.send();
+
+    final responseBody = await response.stream.bytesToString();
+    if (response.statusCode == 200) {
+      final responseData = json.decode(responseBody);
+      print("Response data: $responseData");
+      return EmailResponse.fromJson(responseData);
+    } else {
+      throw Exception('Failed: $responseBody');
+    }
+  }
+
+  Future<EmailResponse> replyEmailIdeas(
+    String token,
+    EmailRequest model,
+  ) async {
+    final headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    final requestBody = {
+      "assistant": {
+        "id": "gpt-4o-mini",
+        "model": "dify",
+        "name": "gpt-4o-mini",
+      },
+      'mainIdea': model.mainIdea,
+      'action': model.action,
+      'email': model.email,
+      'metadata': {
+        'context': model.metadata.context,
+        'subject': model.metadata.subject,
+        'sender': model.metadata.sender,
+        'receiver': model.metadata.receiver,
+        'language': model.metadata.language,
+      },
+    };
+
+    final request = http.Request('POST', Uri.parse('$baseUrl/api/v1/ai-email'));
+    request.headers.addAll(headers);
+    request.body = json.encode(requestBody);
+
+    try {
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        final responseBody = await response.stream.bytesToString();
+        print('✅ Response received:\n$responseBody');
+        final responseData = json.decode(responseBody);
+        return EmailResponse.fromJson(responseData);
+      } else {
+        print('❌ Failed with status: ${response.statusCode}');
+        print('Reason: ${response.reasonPhrase}');
+        print('Response body: ${await response.stream.bytesToString()}');
+        throw Exception('Failed to send request: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      print('⚠️ Error occurred while sending request: $e');
+      throw Exception('Failed to send reply email ideas: $e');
+    }
   }
 }

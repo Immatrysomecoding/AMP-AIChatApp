@@ -24,7 +24,8 @@ class PromptService {
       final responseBody = json.decode(response.body);
 
       List<dynamic> items = responseBody['items'];
-      
+      print("items: $items");
+
       return items.map((data) => Prompt.fromJson(data)).toList();
     } else {
       throw Exception("Failed to fetch prompts: ${response.reasonPhrase}");
@@ -49,7 +50,59 @@ class PromptService {
       final responseBody = json.decode(response.body);
 
       List<dynamic> items = responseBody['items'];
-      
+
+      return items.map((data) => Prompt.fromJson(data)).toList();
+    } else {
+      throw Exception("Failed to fetch prompts: ${response.reasonPhrase}");
+    }
+  }
+
+  Future<List<Prompt>> getPublicFavoritePrompts(String token) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    var response = await http.get(
+      Uri.parse(
+        '$baseUrl/api/v1/prompts?query&offset=&limit=20&isFavorite=true&isPublic=true',
+      ),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = json.decode(response.body);
+
+      List<dynamic> items = responseBody['items'];
+      print("items: $items");
+
+      return items.map((data) => Prompt.fromJson(data)).toList();
+    } else {
+      throw Exception("Failed to fetch prompts: ${response.reasonPhrase}");
+    }
+  }
+
+  Future<List<Prompt>> getPrivateFavoritePrompts(String token) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    var response = await http.get(
+      Uri.parse(
+        '$baseUrl/api/v1/prompts?query&offset=&limit=20&isFavorite=true&isPublic=false',
+      ),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = json.decode(response.body);
+
+      List<dynamic> items = responseBody['items'];
+      print("items: $items");
+
       return items.map((data) => Prompt.fromJson(data)).toList();
     } else {
       throw Exception("Failed to fetch prompts: ${response.reasonPhrase}");
@@ -67,10 +120,7 @@ class PromptService {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
     };
-    var request = http.Request(
-      'POST',
-      Uri.parse('$baseUrl/api/v1/prompts'),
-    );
+    var request = http.Request('POST', Uri.parse('$baseUrl/api/v1/prompts'));
     request.body = json.encode({
       "title": title,
       "content": content,

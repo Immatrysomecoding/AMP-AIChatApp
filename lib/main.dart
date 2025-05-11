@@ -1,3 +1,4 @@
+import 'package:aichat/Screens/email_screen.dart';
 import 'package:aichat/Screens/knowledge_screen.dart';
 import 'package:aichat/core/providers/knowledge_provider.dart';
 import 'package:flutter/material.dart';
@@ -61,6 +62,7 @@ class MyApp extends StatelessWidget {
         '/bot': (context) => const BotScreen(),
         '/history': (context) => const ChatHistoryScreen(),
         '/knowledge': (context) => const KnowledgeScreen(),
+        '/email': (context) => const EmailScreen(),
         '/updateBot':
             (context) => UpdateBot(
               botId: '',

@@ -31,8 +31,8 @@ class _KnowledgeScreenState extends State<KnowledgeScreen> {
       appBar: isMobile
           ? AppBar(
               title: const Text("Knowledge"),
-              backgroundColor: Colors.blue.shade50,
-              iconTheme: const IconThemeData(color: Colors.blue),
+              backgroundColor: Colors.white,
+              iconTheme: const IconThemeData(color: Colors.white),
               elevation: 0,
             )
           : null,

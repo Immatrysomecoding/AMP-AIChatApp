@@ -1,3 +1,5 @@
+import 'package:aichat/core/models/EmailRequest.dart';
+import 'package:aichat/core/models/EmailResponse.dart';
 import 'package:flutter/material.dart';
 import 'package:aichat/core/models/ChatMessage.dart';
 import 'package:aichat/core/models/AIModel.dart';
@@ -700,6 +702,20 @@ class ChatProvider with ChangeNotifier {
       _isSendingMessage = false;
       notifyListeners();
     }
+  }
+
+  Future<EmailResponse> generateResponseEmail(
+    String token,
+    EmailRequest emailRequest,
+  ) async {
+    return await _chatService.generateResponseEmail(token, emailRequest);
+  }
+
+  Future<EmailResponse> replyEmailIdeas(
+    String token,
+    EmailRequest emailRequest,
+  ) async {
+    return await _chatService.replyEmailIdeas(token, emailRequest);
   }
 
   // Helper function to check if a string is a valid UUID
