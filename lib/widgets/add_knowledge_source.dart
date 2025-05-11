@@ -60,7 +60,11 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
                 shrinkWrap: true,
                 children: [
                   _buildActiveTile(
-                    icon: Icons.insert_drive_file,
+                    iconWidget: Image.asset(
+                      'assets/file.png',
+                      width: 24,
+                      height: 24,
+                    ),
                     title: 'Local files',
                     subtitle: 'Upload pdf, docx, ...',
                     onTap: () async {
@@ -81,7 +85,11 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
                   ),
 
                   _buildActiveTile(
-                    icon: Icons.language,
+                    iconWidget: Image.asset(
+                      'assets/website.png',
+                      width: 24,
+                      height: 24,
+                    ),
                     title: 'Website',
                     subtitle: 'Connect Website to get data',
                     onTap: () {
@@ -99,7 +107,11 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
                     },
                   ),
                   _buildActiveTile(
-                    icon: Icons.chat,
+                    iconWidget: Image.asset(
+                      'assets/slack.png',
+                      width: 24,
+                      height: 24,
+                    ),
                     title: 'Slack',
                     subtitle: "Connect to Slack Workspace",
                     onTap: () {
@@ -117,7 +129,11 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
                     },
                   ),
                   _buildActiveTile(
-                    icon: Icons.workspaces_outlined,
+                    iconWidget: Image.asset(
+                      'assets/confluence.png',
+                      width: 24,
+                      height: 24,
+                    ),
                     title: 'Confluence',
                     subtitle: "Connect to Confluence",
                     onTap: () {
@@ -168,16 +184,15 @@ class _KnowledgeSourceDialogState extends State<KnowledgeSourceDialog> {
   }
 
   Widget _buildActiveTile({
-    required IconData icon,
+    required Widget iconWidget,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: Theme.of(context).primaryColor),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      leading: iconWidget,
+      title: Text(title),
       subtitle: Text(subtitle),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
   }

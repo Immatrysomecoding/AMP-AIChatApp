@@ -341,7 +341,7 @@ class KnowledgeUnitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        leading: const Icon(Icons.insert_drive_file),
+        leading: _buildLeadingIcon(type),
         title: Text(unitName),
         subtitle: Row(
           children: [
@@ -369,4 +369,34 @@ class KnowledgeUnitCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildLeadingIcon(String type) {
+    String assetPath;
+    switch (type.toLowerCase()) {
+      case 'slack':
+        assetPath = 'assets/slack.png';
+        break;
+      case 'confluence':
+        assetPath = 'assets/confluence.png';
+        break;
+      case 'website':
+        assetPath = 'assets/website.png';
+        break;
+      case 'file':
+        assetPath = 'assets/file.png';
+        break;
+      default:
+        return const Icon(Icons.insert_drive_file); // fallback icon
+    }
+
+    return Image.asset(
+      assetPath,
+      width: 24,
+      height: 24,
+      errorBuilder: (context, error, stackTrace) {
+        return const Icon(Icons.insert_drive_file); // fallback on error
+      },
+    );
+  }
 }
+
