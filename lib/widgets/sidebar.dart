@@ -78,11 +78,13 @@ class Sidebar extends StatelessWidget {
 
           _buildNavOption(
             context: context,
-            icon: Icons.group_outlined,
-            label: 'Group',
-            isSelected: selectedItem == 'Group',
+            icon: Icons.email_outlined,
+            label: 'Email',
+            isSelected: selectedItem == 'Email',
             onTap: () {
-              // Navigate to group screen
+              if (selectedItem != 'EMAIL') {
+                Navigator.pushReplacementNamed(context, '/email');
+              }
             },
           ),
 
