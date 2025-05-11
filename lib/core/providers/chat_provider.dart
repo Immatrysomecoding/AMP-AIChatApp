@@ -6,7 +6,7 @@ import 'package:aichat/core/models/AIModel.dart';
 import 'package:aichat/core/services/chat_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:math';
+import 'dart:math' as math;
 
 class ChatProvider with ChangeNotifier {
   final ChatService _chatService = ChatService();
@@ -92,7 +92,6 @@ class ChatProvider with ChangeNotifier {
   Future<void> fetchConversations(String token) async {
     if (_selectedModel == null) {
       print("WARNING: No model selected in fetchConversations");
-      // Continue anyway for debugging
     }
 
     _setLoading(true);
@@ -100,23 +99,17 @@ class ChatProvider with ChangeNotifier {
     try {
       print("Fetching conversations with token length: ${token.length}");
 
-      // Hardcode for testing
       var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
 
       var url = Uri.parse(
-        'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations?assistantId=gpt-4o-mini&assistantModel=dify',
+        'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations?assistantId=${_selectedModel?.id ?? "gpt-4o-mini"}&assistantModel=${_selectedModel?.model ?? "dify"}',
       );
       print("Fetching from URL: ${url.toString()}");
 
-      var request = http.Request('GET', url);
-      request.headers.addAll(headers);
-
-      var response = await request.send();
-
-      print("Response status code: ${response.statusCode}");
+      var response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final responseBody = await response.stream.bytesToString();
+        final responseBody = response.body;
         print("Response body length: ${responseBody.length} characters");
 
         final decoded = json.decode(responseBody);
@@ -124,7 +117,8 @@ class ChatProvider with ChangeNotifier {
 
         print("Found ${items.length} conversations in API response");
 
-        List<Conversation> newConversations = [];
+        // Create a list to hold updated conversations
+        List<Conversation> apiConversations = [];
 
         for (var item in items) {
           try {
@@ -136,35 +130,42 @@ class ChatProvider with ChangeNotifier {
             };
 
             Conversation conv = Conversation.fromJson(item);
-            print(
-              "Successfully parsed conversation: ${conv.id} - ${conv.title}",
-            );
-            newConversations.add(conv);
+            print("Parsed conversation: ${conv.id} - ${conv.title}");
+            apiConversations.add(conv);
           } catch (e) {
             print("Error parsing conversation item: $e");
-            print("Problematic item: $item");
+          }
+        }
+
+        // If we have a current conversation that's not in the API list, keep it
+        if (_currentConversation != null) {
+          bool currentExists = apiConversations.any(
+            (conv) => conv.id == _currentConversation!.id,
+          );
+
+          if (!currentExists) {
+            print("Current conversation not found in API, preserving it");
+            apiConversations.insert(0, _currentConversation!);
           }
         }
 
         // Update the conversations list
-        _conversations = newConversations;
+        _conversations = apiConversations;
 
         // Sort conversations by date (newest first)
         _conversations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-        print("Updated provider with ${_conversations.length} conversations");
       } else {
         print(
           'Error fetching conversations: ${response.statusCode} - ${response.reasonPhrase}',
         );
-        _conversations = [];
+        // Don't clear conversations on error
       }
     } catch (e) {
       print('Exception in fetchConversations: $e');
-      _conversations = [];
+      // Don't clear conversations on error
     } finally {
       _setLoading(false);
-      notifyListeners(); // Make sure UI updates
+      notifyListeners();
     }
   }
 
@@ -193,10 +194,10 @@ class ChatProvider with ChangeNotifier {
     }
 
     _setLoading(true);
-    notifyListeners(); // Notify before starting so UI shows loading state
+    notifyListeners();
 
     try {
-      // Find the conversation in our list
+      // Check if we already have this conversation loaded
       Conversation? existingConversation = _conversations.firstWhere(
         (conv) => conv.id == conversationId,
         orElse:
@@ -213,24 +214,20 @@ class ChatProvider with ChangeNotifier {
       );
 
       print(
-        "Loading messages for conversation: ${existingConversation.id} - ${existingConversation.title}",
+        "Loading conversation: ${existingConversation.id} - ${existingConversation.title}",
       );
 
-      // Fetch the messages directly using http
+      // Fetch the messages
       var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
-
-      // Use dynamic assistantId/model values from the current model
       var url = Uri.parse(
         'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations/$conversationId/messages?assistantId=${_selectedModel!.id}&assistantModel=${_selectedModel!.model}',
       );
 
-      print("Fetching messages from URL: $url");
+      print("Fetching from URL: $url");
       var response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
         final responseBody = response.body;
-        print("Received message data of ${responseBody.length} bytes");
-
         var responseData = json.decode(responseBody);
         List<dynamic> items = responseData['items'] ?? [];
 
@@ -238,7 +235,7 @@ class ChatProvider with ChangeNotifier {
 
         List<ChatMessage> messages = [];
 
-        // Process each message in the response
+        // Process each message
         for (var item in items) {
           try {
             // User message
@@ -284,22 +281,26 @@ class ChatProvider with ChangeNotifier {
           }
         }
 
-        print("Processed ${messages.length} messages successfully");
-
         // Update the conversation with the messages
         existingConversation.messages = messages;
         existingConversation.title =
             existingConversation.title == 'Loading...' && items.isNotEmpty
                 ? (items[0]['query'] ?? 'Conversation').substring(
                   0,
-                  min(20, (items[0]['query'] ?? 'Conversation').length),
+                  math.min(20, (items[0]['query'] ?? 'Conversation').length),
                 )
                 : existingConversation.title;
 
+        // Set as current conversation
         _currentConversation = existingConversation;
-        print(
-          "Successfully loaded conversation with ${messages.length} messages",
+
+        // Make sure it's in our conversations list
+        bool exists = _conversations.any(
+          (conv) => conv.id == existingConversation.id,
         );
+        if (!exists) {
+          _conversations.insert(0, existingConversation);
+        }
       } else {
         print(
           "Error loading messages: ${response.statusCode} - ${response.reasonPhrase}",
@@ -313,7 +314,7 @@ class ChatProvider with ChangeNotifier {
       throw e;
     } finally {
       _setLoading(false);
-      notifyListeners(); // Update UI after loading completes
+      notifyListeners();
     }
   }
 
@@ -322,7 +323,7 @@ class ChatProvider with ChangeNotifier {
     if (_selectedModel == null) return;
 
     _currentConversation = Conversation(
-      id: '', // Will be assigned by the backend
+      id: 'temp-${DateTime.now().millisecondsSinceEpoch}', // Clearer name for temporary ID
       title: 'New Conversation',
       createdAt: DateTime.now(),
       assistant: AIAssistant(
@@ -330,14 +331,12 @@ class ChatProvider with ChangeNotifier {
         model: _selectedModel!.model,
         name: _selectedModel!.name,
       ),
-      messages: [], // Ensure messages is an empty list
+      messages: [],
     );
 
-    notifyListeners();
-  }
+    // Add to conversations list immediately
+    _conversations.insert(0, _currentConversation!);
 
-  void setCurrentConversationWithMessages(Conversation conversation) {
-    _currentConversation = conversation;
     notifyListeners();
   }
 
@@ -355,73 +354,126 @@ class ChatProvider with ChangeNotifier {
     _isSendingMessage = true;
     notifyListeners();
 
-    // Start a new conversation if none is active
-    if (_currentConversation == null) {
-      startNewConversation();
-    }
-
-    // Create a user message with the correct assistant info
-    final userMessage = ChatMessage(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: content,
-      role: 'user',
-      files: files,
-      createdAt: DateTime.now(),
-      assistant: AIAssistant(
-        id: _selectedModel!.id,
-        model: _selectedModel!.model,
-        name: _selectedModel!.name,
-      ),
-    );
-
-    _currentConversation!.messages.add(userMessage);
-    notifyListeners();
-
     try {
-      // Important: Pass the existing conversation ID if available
-      final String? conversationId =
-          _currentConversation!.id.isNotEmpty ? _currentConversation!.id : null;
-      print(
-        "Sending message to conversation ID: ${conversationId ?? 'NEW CONVERSATION'}",
-      );
-
-      var response = await _chatService.sendMessage(
-        token,
-        content,
-        files,
-        AIAssistant(
+      // Create user message and add to the conversation
+      final userMessage = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        content: content,
+        role: 'user',
+        files: files,
+        createdAt: DateTime.now(),
+        assistant: AIAssistant(
           id: _selectedModel!.id,
           model: _selectedModel!.model,
           name: _selectedModel!.name,
         ),
-        _currentConversation!.messages,
-        conversationId,
       );
 
-      // Update remaining usage
-      if (response.containsKey('remainingUsage')) {
-        _remainingUsage = response['remainingUsage'];
+      // Start a new conversation if none is active
+      if (_currentConversation == null) {
+        startNewConversation();
       }
 
-      // Update conversation ID if this is a new conversation
-      if (_currentConversation!.id.isEmpty &&
-          response.containsKey('conversationId')) {
-        _currentConversation!.id = response['conversationId'];
-        print("Received new conversation ID: ${_currentConversation!.id}");
+      // Add user message to current conversation
+      _currentConversation!.messages.add(userMessage);
+      notifyListeners();
 
-        // Set the title to the first message content (shortened if needed)
-        _currentConversation!.title =
-            content.length > 30 ? '${content.substring(0, 27)}...' : content;
+      // Check if we have a valid UUID
+      final isServerUuid = RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        caseSensitive: false,
+      ).hasMatch(_currentConversation!.id);
 
-        // Add this conversation to our list
-        _conversations.insert(0, _currentConversation!);
+      // Build request body with empty messages array
+      var body = {
+        'content': content,
+        'files': files,
+        'assistant': {
+          'id': _selectedModel!.id,
+          'model': _selectedModel!.model,
+          'name': _selectedModel!.name,
+        },
+        'metadata': {
+          'conversation': {
+            'messages': [], // Empty array for all requests
+          },
+        },
+      };
+
+      // Set up headers with the conversation ID for existing conversations
+      var headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+
+      // Only add the header if it's a server UUID
+      if (isServerUuid) {
+        headers['x-jarvis-guid'] = _currentConversation!.id;
+        print(
+          "Including conversation ID in header: ${_currentConversation!.id}",
+        );
+      } else {
+        print("First message - no conversation ID in header yet");
       }
 
-      // Add the assistant's response
-      if (response.containsKey('message')) {
+      // Make the API request
+      var url = Uri.parse('https://api.dev.jarvis.cx/api/v1/ai-chat/messages');
+
+      print("Sending message with payload: ${json.encode(body)}");
+      print("Headers: ${headers.toString()}");
+
+      var response = await http.post(
+        url,
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print("Response data: $responseData");
+
+        // Get the conversation ID from the response
+        final newConversationId = responseData['conversationId'] ?? '';
+
+        // Update our conversation ID with the one from the server (only for first message)
+        if (newConversationId.isNotEmpty && !isServerUuid) {
+          // Update the ID but don't change the reference
+          _currentConversation!.id = newConversationId;
+          print("Updated conversation ID to: $newConversationId");
+
+          // Set title for new conversations
+          if (_currentConversation!.title == 'New Conversation') {
+            _currentConversation!.title =
+                content.length > 30
+                    ? '${content.substring(0, 27)}...'
+                    : content;
+          }
+
+          // Update the conversations list reference if needed
+          bool exists = false;
+          for (int i = 0; i < _conversations.length; i++) {
+            if (_conversations[i].id == _currentConversation!.id) {
+              exists = true;
+              break;
+            }
+          }
+
+          if (!exists) {
+            _conversations.insert(0, _currentConversation!);
+          }
+
+          notifyListeners();
+        }
+
+        // Update token usage if available
+        if (responseData.containsKey('remainingUsage')) {
+          _remainingUsage = responseData['remainingUsage'];
+        }
+
+        // Add AI response message
         final assistantMessage = ChatMessage(
           id: '${DateTime.now().millisecondsSinceEpoch}_response',
-          content: response['message'],
+          content: responseData['message'] ?? 'No response',
           role: 'model',
           createdAt: DateTime.now(),
           assistant: AIAssistant(
@@ -432,24 +484,29 @@ class ChatProvider with ChangeNotifier {
         );
 
         _currentConversation!.messages.add(assistantMessage);
+      } else {
+        print("API error: ${response.statusCode} - ${response.body}");
+        throw Exception("API Error: ${response.statusCode}");
       }
     } catch (e) {
       print('Error sending message: $e');
 
       // Show error in chat
-      final errorMessage = ChatMessage(
-        id: '${DateTime.now().millisecondsSinceEpoch}_error',
-        content: 'Error: Failed to send message. Please try again.',
-        role: 'system',
-        createdAt: DateTime.now(),
-        assistant: AIAssistant(
-          id: _selectedModel!.id,
-          model: _selectedModel!.model,
-          name: 'System',
-        ),
-      );
+      if (_currentConversation != null) {
+        final errorMessage = ChatMessage(
+          id: '${DateTime.now().millisecondsSinceEpoch}_error',
+          content: 'Error: Failed to send message. Please try again.',
+          role: 'system',
+          createdAt: DateTime.now(),
+          assistant: AIAssistant(
+            id: _selectedModel!.id,
+            model: _selectedModel!.model,
+            name: 'System',
+          ),
+        );
 
-      _currentConversation!.messages.add(errorMessage);
+        _currentConversation!.messages.add(errorMessage);
+      }
     } finally {
       _isSendingMessage = false;
       notifyListeners();
@@ -481,7 +538,6 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  // Add this method to the ChatProvider class
   Future<void> sendMessageDirect(String token, String content) async {
     if (_selectedModel == null) return;
     if (content.trim().isEmpty) return;
@@ -503,55 +559,59 @@ class ChatProvider with ChangeNotifier {
         ),
       );
 
+      // Ensure we have a current conversation
       if (_currentConversation == null) {
         startNewConversation();
       }
 
+      // Add the message to the current conversation
       _currentConversation!.messages.add(userMessage);
       notifyListeners();
 
-      // Format previous messages
-      List<Map<String, dynamic>> formattedMessages =
-          _currentConversation!.messages.map((msg) {
-            return {
-              'role': msg.role,
-              'content': msg.content,
-              'files': msg.files ?? [],
-              'assistant': {
-                'id': _selectedModel!.id,
-                'model': _selectedModel!.model,
-                'name': _selectedModel!.name,
-              },
-            };
-          }).toList();
+      // Check if we have a valid UUID
+      final isServerUuid = RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        caseSensitive: false,
+      ).hasMatch(_currentConversation!.id);
 
-      // Build request body
+      // Build the request
       var body = {
         'content': content,
         'files': [],
-        'metadata': {
-          'conversation': {'messages': formattedMessages},
-        },
         'assistant': {
           'id': _selectedModel!.id,
           'model': _selectedModel!.model,
           'name': _selectedModel!.name,
         },
+        'metadata': {
+          'conversation': {
+            'messages': [], // KEY CHANGE: Always use an empty array!
+          },
+        },
       };
 
-      // Add conversation ID if available
-      if (_currentConversation!.id.isNotEmpty) {
-        body['conversationId'] = _currentConversation!.id;
-      }
-
-      // Make the API request directly
-      var url = Uri.parse('https://api.dev.jarvis.cx/api/v1/ai-chat/messages');
+      // Set up headers - put the conversation ID in x-jarvis-guid if it's a server UUID
       var headers = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       };
 
-      print("Sending direct message request");
+      // Only add the header if it's a server UUID
+      if (isServerUuid) {
+        headers['x-jarvis-guid'] = _currentConversation!.id;
+        print(
+          "Including conversation ID in header: ${_currentConversation!.id}",
+        );
+      } else {
+        print("First message - no conversation ID in header yet");
+      }
+
+      // API request
+      var url = Uri.parse('https://api.dev.jarvis.cx/api/v1/ai-chat/messages');
+
+      print("Sending message with payload: ${json.encode(body)}");
+      print("Headers: ${headers.toString()}");
+
       var response = await http.post(
         url,
         headers: headers,
@@ -562,27 +622,49 @@ class ChatProvider with ChangeNotifier {
         final responseData = json.decode(response.body);
         print("Response data: $responseData");
 
-        // Update conversation ID if needed
-        if (_currentConversation!.id.isEmpty &&
-            responseData.containsKey('conversationId')) {
-          _currentConversation!.id = responseData['conversationId'];
+        // Get the conversation ID from the response
+        final newConversationId = responseData['conversationId'] ?? '';
 
-          // Add to conversations list if new
-          bool exists = _conversations.any(
-            (conv) => conv.id == _currentConversation!.id,
-          );
+        // Update our conversation ID with the one from the server (only for first message)
+        if (newConversationId.isNotEmpty && !isServerUuid) {
+          // Update the ID but don't change the reference
+          _currentConversation!.id = newConversationId;
+          print("Updated conversation ID to: $newConversationId");
+
+          // Set title for new conversations (only on first message)
+          if (_currentConversation!.title == 'New Conversation') {
+            _currentConversation!.title =
+                content.length > 30
+                    ? '${content.substring(0, 27)}...'
+                    : content;
+          }
+
+          // Update the conversations list reference
+          bool exists = false;
+          for (int i = 0; i < _conversations.length; i++) {
+            if (_conversations[i].id == _currentConversation!.id) {
+              exists = true;
+              break;
+            }
+          }
+
           if (!exists) {
             _conversations.insert(0, _currentConversation!);
           }
+
+          // Notify listeners
+          notifyListeners();
+        }
+
+        // Update the token usage
+        if (responseData.containsKey('remainingUsage')) {
+          _remainingUsage = responseData['remainingUsage'];
         }
 
         // Add AI response message
         final assistantMessage = ChatMessage(
           id: '${DateTime.now().millisecondsSinceEpoch}_response',
-          content:
-              responseData['answer'] ??
-              responseData['message'] ??
-              'No response',
+          content: responseData['message'] ?? 'No response',
           role: 'model',
           createdAt: DateTime.now(),
           assistant: AIAssistant(
@@ -635,4 +717,10 @@ class ChatProvider with ChangeNotifier {
   ) async {
     return await _chatService.replyEmailIdeas(token, emailRequest);
   }
+
+  // Helper function to check if a string is a valid UUID
+  bool isUuid(String s) => RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  ).hasMatch(s);
 }
