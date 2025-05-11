@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:aichat/core/providers/prompt_provider.dart';
@@ -30,6 +32,7 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
   String currentUserToken = '';
   Prompt? _selectedPrompt;
   String searchQuery = '';
+  bool isShowingFavorites = false;
 
   @override
   void initState() {
@@ -182,6 +185,30 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                     },
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          isShowingFavorites ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            isShowingFavorites = !isShowingFavorites;
+                          });
+                          if(isShowingFavorites) {
+                            if(_selectedTab == 'Public Prompts') {
+                              promptProvider.fetchPublicFavoritePrompts(currentUserToken);
+                            } else {
+                              promptProvider.fetchPrivateFavoritePrompts(currentUserToken);
+                            }
+                          } else {
+                            if(_selectedTab == 'Public Prompts') {
+                              promptProvider.fetchPublicPrompts(currentUserToken);
+                            } else {
+                              promptProvider.fetchPrivatePrompts(currentUserToken);
+                            }
+                          }
+                        },
+                      ),
                       hintText: 'Search...',
                       filled: true,
                       fillColor: Colors.grey.shade100,
@@ -213,10 +240,9 @@ class _PromptLibraryOverlayState extends State<PromptLibraryOverlay> {
                     items:
                         <String>[
                           'All',
-                          'Fun',
-                          'Education',
-                          'Work',
-                          'Favorite',
+                          'Writing',
+                          'Chatbot',
+                          'Marketing',
                           'Other',
                         ].map<DropdownMenuItem<String>>((String value) {
                           return DropdownMenuItem<String>(
