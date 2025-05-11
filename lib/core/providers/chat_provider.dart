@@ -628,4 +628,11 @@ class ChatProvider with ChangeNotifier {
   ) async {
     return await _chatService.generateResponseEmail(token, emailRequest);
   }
+
+  Future<EmailResponse> replyEmailIdeas(
+    String token,
+    EmailRequest emailRequest,
+  ) async {
+    return await _chatService.replyEmailIdeas(token, emailRequest);
+  }
 }

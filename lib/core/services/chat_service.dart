@@ -327,32 +327,55 @@ class ChatService {
     }
   }
 
-  // Future<void> replyEmailIdeas(String token, EmailRequest requestModel) async {
-  //   final uri = Uri.parse('$baseUrl/api/v1/ai-email/reply-ideas');
+  Future<EmailResponse> replyEmailIdeas(
+    String token,
+    EmailRequest model,
+  ) async {
+    final headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
 
-  //   final headers = {
-  //     'x-jarvis-guid': '',
-  //     'Authorization': 'Bearer $token',
-  //     'Content-Type': 'application/json',
-  //   };
+    final requestBody = {
+      "assistant": {
+        "id": "gpt-4o-mini",
+        "model": "dify",
+        "name": "gpt-4o-mini",
+      },
+      'mainIdea': model.mainIdea,
+      'action': model.action,
+      'email': model.email,
+      'metadata': {
+        'context': model.metadata.context,
+        'subject': model.metadata.subject,
+        'sender': model.metadata.sender,
+        'receiver': model.metadata.receiver,
+        'language': model.metadata.language,
+      },
+    };
 
-  //   final request =
-  //       http.Request('POST', uri)
-  //         ..headers.addAll(headers)
-  //         ..body = json.encode(requestModel.toJson());
+    final request = http.Request('POST', Uri.parse('$baseUrl/api/v1/ai-email'));
+    request.headers.addAll(headers);
+    request.body = json.encode(requestBody);
 
-  //   try {
-  //     final response = await request.send();
+    try {
+      final response = await request.send();
 
-  //     if (response.statusCode == 200) {
-  //       final responseBody = await response.stream.bytesToString();
-  //       print('✅ Response received:\n$responseBody');
-  //     } else {
-  //       print('❌ Failed with status: ${response.statusCode}');
-  //       print('Reason: ${response.reasonPhrase}');
-  //     }
-  //   } catch (e) {
-  //     print('⚠️ Error occurred while sending request: $e');
-  //   }
-  // }
+      if (response.statusCode == 200) {
+        final responseBody = await response.stream.bytesToString();
+        print('✅ Response received:\n$responseBody');
+        final responseData = json.decode(responseBody);
+        return EmailResponse.fromJson(responseData);
+      } else {
+        print('❌ Failed with status: ${response.statusCode}');
+        print('Reason: ${response.reasonPhrase}');
+        print('Response body: ${await response.stream.bytesToString()}');
+        throw Exception('Failed to send request: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      print('⚠️ Error occurred while sending request: $e');
+      throw Exception('Failed to send reply email ideas: $e');
+    }
+  }
 }

@@ -85,44 +85,39 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
                         ),
                       ],
                     ),
-                    if (selectedAction == 'full')
                       _buildTextField("Main Idea", mainIdeaController),
                     const Divider(),
                     _buildTextField("Subject", subjectController),
                     _buildTextField("Sender", senderController),
                     _buildTextField("Receiver", receiverController),
+                    const SizedBox(height: 12),
                     _buildDropdown(
                       "Language",
                       selectedLanguage,
                       ['vietnamese', 'english'],
-                      (val) {
-                        setState(() => selectedLanguage = val!);
-                      },
+                      (val) => setState(() => selectedLanguage = val!),
                     ),
-                    _buildDropdown(
-                      "Length",
-                      selectedLength,
-                      ['short', 'medium', 'long'],
-                      (val) {
-                        setState(() => selectedLength = val!);
-                      },
-                    ),
-                    _buildDropdown(
-                      "Formality",
-                      selectedFormality,
-                      ['formal', 'neutral', 'informal'],
-                      (val) {
-                        setState(() => selectedFormality = val!);
-                      },
-                    ),
-                    _buildDropdown(
-                      "Tone",
-                      selectedTone,
-                      ['friendly', 'serious', 'excited'],
-                      (val) {
-                        setState(() => selectedTone = val!);
-                      },
-                    ),
+                    if (selectedAction == 'full') ...[
+                      _buildDropdown(
+                        "Length",
+                        selectedLength,
+                        ['short', 'medium', 'long'],
+                        (val) => setState(() => selectedLength = val!),
+                      ),
+                      _buildDropdown(
+                        "Formality",
+                        selectedFormality,
+                        ['formal', 'neutral', 'informal'],
+                        (val) => setState(() => selectedFormality = val!),
+                      ),
+                      _buildDropdown(
+                        "Tone",
+                        selectedTone,
+                        ['friendly', 'serious', 'excited'],
+                        (val) => setState(() => selectedTone = val!),
+                      ),
+                    ],
+
                     const SizedBox(height: 12),
                     Center(
                       child: ElevatedButton(
@@ -255,7 +250,6 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
     final model = EmailRequest(
       mainIdea: mainIdeaController.text,
       action: _selectedImprovedAction ?? selectedAction,
-
       email: emailController.text,
       metadata: Metadata(
         context: [],
@@ -272,22 +266,22 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
     );
 
     try {
-      try {
-        final response = await provider.generateResponseEmail(token, model);
+      EmailResponse response;
 
-        setState(() {
-          _lastResponse = response; // ✅ Save for reuse
-          responseText = '''Email: ${response.email}
-          
+      // 🔀 Switch between full reply and ideas mode
+      if ((_selectedImprovedAction ?? selectedAction) == 'ideas') {
+        response = await provider.replyEmailIdeas(token, model);
+      } else {
+        response = await provider.generateResponseEmail(token, model);
+      }
+
+      setState(() {
+        _lastResponse = response;
+        responseText = '''Email: ${response.email}
 
 🧮 Remaining Usage: ${response.remainingUsage}
 ''';
-        });
-      } catch (e) {
-        setState(() {
-          responseText = "❌ Error: $e";
-        });
-      }
+      });
     } catch (e) {
       setState(() {
         responseText = "❌ Error: $e";
