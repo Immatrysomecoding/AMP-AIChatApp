@@ -384,7 +384,21 @@ class ChatProvider with ChangeNotifier {
         caseSensitive: false,
       ).hasMatch(_currentConversation!.id);
 
-      // Build request body with empty messages array
+      // Prepare the conversation messages in the format the server expects
+      List<Map<String, dynamic>> conversationMessages = [];
+      for (var message in _currentConversation!.messages) {
+        conversationMessages.add({
+          'role': message.role,
+          'content': message.content,
+          'assistant': {
+            'id': message.assistant.id,
+            'model': message.assistant.model,
+            'name': message.assistant.name,
+          },
+        });
+      }
+
+      // Build request body
       var body = {
         'content': content,
         'files': files,
@@ -395,10 +409,18 @@ class ChatProvider with ChangeNotifier {
         },
         'metadata': {
           'conversation': {
-            'messages': [], // Empty array for all requests
+            // Include the conversation ID within metadata if it exists
+            if (isServerUuid) 'id': _currentConversation!.id,
+            // Include the full conversation history
+            'messages': conversationMessages,
           },
         },
       };
+
+      // Also include top-level conversationId for backward compatibility
+      if (isServerUuid) {
+        body['conversationId'] = _currentConversation!.id;
+      }
 
       // Set up headers with the conversation ID for existing conversations
       var headers = {
@@ -500,7 +522,7 @@ class ChatProvider with ChangeNotifier {
           createdAt: DateTime.now(),
           assistant: AIAssistant(
             id: _selectedModel!.id,
-            model: _selectedModel!.model,
+            model: 'system',
             name: 'System',
           ),
         );
@@ -574,6 +596,20 @@ class ChatProvider with ChangeNotifier {
         caseSensitive: false,
       ).hasMatch(_currentConversation!.id);
 
+      // Prepare the conversation messages in the format the server expects
+      List<Map<String, dynamic>> conversationMessages = [];
+      for (var message in _currentConversation!.messages) {
+        conversationMessages.add({
+          'role': message.role,
+          'content': message.content,
+          'assistant': {
+            'id': message.assistant.id,
+            'model': message.assistant.model,
+            'name': message.assistant.name,
+          },
+        });
+      }
+
       // Build the request
       var body = {
         'content': content,
@@ -585,25 +621,28 @@ class ChatProvider with ChangeNotifier {
         },
         'metadata': {
           'conversation': {
-            'messages': [], // KEY CHANGE: Always use an empty array!
+            // Include the conversation ID within metadata if it exists
+            if (isServerUuid) 'id': _currentConversation!.id,
+            // Include the full conversation history
+            'messages': conversationMessages,
           },
         },
       };
 
-      // Set up headers - put the conversation ID in x-jarvis-guid if it's a server UUID
+      // Also include top-level conversationId for backward compatibility
+      if (isServerUuid) {
+        body['conversationId'] = _currentConversation!.id;
+      }
+
+      // Set up headers
       var headers = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       };
 
-      // Only add the header if it's a server UUID
+      // Add the header for backward compatibility
       if (isServerUuid) {
         headers['x-jarvis-guid'] = _currentConversation!.id;
-        print(
-          "Including conversation ID in header: ${_currentConversation!.id}",
-        );
-      } else {
-        print("First message - no conversation ID in header yet");
       }
 
       // API request
