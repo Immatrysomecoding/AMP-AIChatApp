@@ -1,4 +1,7 @@
+import 'package:aichat/core/models/AIModel.dart';
+import 'package:aichat/core/providers/ai_model_provider.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
+import 'package:aichat/core/providers/chat_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/widgets/confirm_removal_dialog.dart';
 import 'package:aichat/widgets/update_bot.dart';
@@ -286,7 +289,75 @@ class _BotListState extends State<BotList> {
                                 onDelete: () {
                                   _confirmAndDeleteBot(bot.id);
                                 },
-                                onChat: () {
+                                onChat: () async {
+                                  // First, ensure AI models are loaded
+                                  final userProvider =
+                                      Provider.of<UserTokenProvider>(
+                                        context,
+                                        listen: false,
+                                      );
+                                  final token =
+                                      userProvider.user?.accessToken ?? '';
+
+                                  if (token.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please login to chat'),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  // Convert bot to AIModel format
+                                  final botModel = AIModel(
+                                    id: 'bot_${bot.id}',
+                                    model: 'knowledge-base',
+                                    name: bot.assistantName,
+                                    description:
+                                        bot.description ??
+                                        'No description available',
+                                  );
+
+                                  // Update AI model provider
+                                  final aiModelProvider =
+                                      Provider.of<AIModelProvider>(
+                                        context,
+                                        listen: false,
+                                      );
+
+                                  // Ensure the bot is in the available models
+                                  final existingModels =
+                                      aiModelProvider.availableModels;
+                                  final botExists = existingModels.any(
+                                    (m) => m.id == botModel.id,
+                                  );
+
+                                  if (!botExists) {
+                                    // Add the bot to available models
+                                    aiModelProvider.updateAvailableModels([
+                                      ...existingModels,
+                                      botModel,
+                                    ]);
+                                  }
+
+                                  // Set it as the selected model
+                                  aiModelProvider.setSelectedModel(botModel);
+
+                                  // Update chat provider
+                                  final chatProvider =
+                                      Provider.of<ChatProvider>(
+                                        context,
+                                        listen: false,
+                                      );
+                                  await chatProvider.setSelectedModel(
+                                    botModel,
+                                    token,
+                                  );
+
+                                  // Start a new conversation
+                                  chatProvider.startNewConversation();
+
+                                  // Navigate to chat
                                   Navigator.pushNamed(context, '/chat');
                                 },
                               );

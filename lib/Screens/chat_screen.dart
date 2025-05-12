@@ -1,3 +1,5 @@
+import 'package:aichat/core/models/AIModel.dart';
+import 'package:aichat/core/providers/ai_model_provider.dart';
 import 'package:flutter/material.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/chat_area.dart';
@@ -30,17 +32,65 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _handleNavigationArgs() {
+  void _handleNavigationArgs() async {
     if (_isInitialized) return;
     _isInitialized = true;
 
-    // Check if we have navigation arguments (conversation data)
+    // Check if we have navigation arguments
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args != null && args is Map<String, dynamic>) {
-      final conversationId = args['conversationId'] as String?;
-      if (conversationId != null) {
-        // Load the conversation
-        _loadConversation(conversationId);
+      final selectedBot = args['selectedBot'] as AIModel?;
+
+      if (selectedBot != null) {
+        // Wait for providers to be ready
+        await Future.delayed(Duration(milliseconds: 100));
+
+        // Get providers
+        final aiModelProvider = Provider.of<AIModelProvider>(
+          context,
+          listen: false,
+        );
+        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+        final userProvider = Provider.of<UserTokenProvider>(
+          context,
+          listen: false,
+        );
+        final token = userProvider.user?.accessToken ?? '';
+
+        if (token.isNotEmpty) {
+          // Ensure AI models are loaded
+          if (aiModelProvider.availableModels.isEmpty) {
+            await aiModelProvider.fetchAvailableModels(token);
+          }
+
+          // Add the bot to available models if not already there
+          final existingBot = aiModelProvider.availableModels.firstWhere(
+            (model) => model.id == selectedBot.id,
+            orElse: () => selectedBot,
+          );
+
+          if (existingBot == selectedBot) {
+            // Bot not in list, add it
+            List<AIModel> updatedModels = [
+              ...aiModelProvider.availableModels,
+              selectedBot,
+            ];
+            aiModelProvider.updateAvailableModels(updatedModels);
+          }
+
+          // Set the bot as selected model
+          aiModelProvider.setSelectedModel(selectedBot);
+          await chatProvider.setSelectedModel(selectedBot, token);
+
+          // Start a new conversation with the bot
+          chatProvider.startNewConversation();
+        }
+      } else {
+        // Check for conversation data (existing functionality)
+        final conversationId = args['conversationId'] as String?;
+        if (conversationId != null) {
+          _loadConversation(conversationId);
+        }
       }
     } else {
       // Check if there's an existing conversation in the provider
