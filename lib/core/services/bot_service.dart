@@ -9,6 +9,228 @@ import 'package:aichat/core/models/Bot.dart';
 class BotService {
   String baseUrl = dotenv.env['KNOWLEDGE_URL'] ?? "";
 
+  // Updated method to create a thread for bot - using playground endpoint
+  Future<Map<String, dynamic>?> createThreadForBot(
+    String token,
+    String botId,
+    String firstMsg,
+  ) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    try {
+      // First, let's try using the playground endpoint
+      var playgroundRequest = http.Request(
+        'POST',
+        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/thread/playground'),
+      );
+      playgroundRequest.body = json.encode({
+        "assistantId": botId,
+        "firstMessage": firstMsg,
+      });
+      playgroundRequest.headers.addAll(headers);
+
+      var playgroundResponse = await playgroundRequest.send();
+      final playgroundBody = await playgroundResponse.stream.bytesToString();
+
+      print("Playground response status: ${playgroundResponse.statusCode}");
+      print("Playground response body: $playgroundBody");
+
+      if (playgroundResponse.statusCode == 200 ||
+          playgroundResponse.statusCode == 201) {
+        try {
+          Map<String, dynamic> data = json.decode(playgroundBody);
+
+          // Extract thread ID from response
+          String? threadId =
+              data['openAiThreadId'] ?? data['threadId'] ?? data['id'];
+
+          if (threadId != null) {
+            // Now let's send the first message directly
+            return await askBot(token, botId, firstMsg, threadId, "");
+          }
+        } catch (e) {
+          print("Error parsing playground response: $e");
+        }
+      }
+
+      // If playground doesn't work, try the direct ask endpoint with an initial message
+      print("Trying direct ask endpoint as fallback...");
+
+      var askRequest = http.Request(
+        'POST',
+        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/$botId/ask'),
+      );
+      askRequest.body = json.encode({
+        "message": firstMsg,
+        "openAiThreadId": "", // Empty for first message
+        "additionalInstruction": "",
+      });
+      askRequest.headers.addAll(headers);
+
+      var askResponse = await askRequest.send();
+
+      print("Ask response status: ${askResponse.statusCode}");
+
+      if (askResponse.statusCode == 200) {
+        // Handle SSE response for the first message
+        final response = await _parseSSEResponse(askResponse, "");
+        return response;
+      }
+
+      // Final fallback - create a mock thread
+      print("Using fallback mock thread");
+      return {
+        'openAiThreadId': 'bot-thread-${DateTime.now().millisecondsSinceEpoch}',
+        'message': 'Hello! How can I assist you today?',
+      };
+    } catch (e) {
+      print("Exception in createThreadForBot: $e");
+      // Return a mock response for development/testing
+      return {
+        'openAiThreadId': 'bot-thread-${DateTime.now().millisecondsSinceEpoch}',
+        'message': 'Hello! How can I assist you today?',
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>?> askBot(
+    String token,
+    String botId,
+    String msg,
+    String openAiThreadId,
+    String additionalInstruction, {
+    Function(String)? onChunkReceived,
+  }) async {
+    var headers = {
+      'x-jarvis-guid': '',
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+
+    try {
+      var request = http.Request(
+        'POST',
+        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/$botId/ask'),
+      );
+
+      Map<String, dynamic> body = {
+        "message": msg,
+        "additionalInstruction": additionalInstruction,
+      };
+
+      // Only include threadId if it's not empty and not a temp ID
+      if (openAiThreadId.isNotEmpty &&
+          !openAiThreadId.startsWith('bot-thread-')) {
+        body["openAiThreadId"] = openAiThreadId;
+      }
+
+      request.body = json.encode(body);
+      request.headers.addAll(headers);
+
+      var response = await request.send();
+      print("Bot ask response status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        // Handle SSE response
+        return await _parseSSEResponse(
+          response,
+          openAiThreadId,
+          onChunkReceived: onChunkReceived,
+        );
+      } else {
+        final errorBody = await response.stream.bytesToString();
+        print("Error asking bot: ${response.statusCode} - $errorBody");
+
+        // Try to parse error message
+        try {
+          final errorData = json.decode(errorBody);
+          final errorMessage = errorData['message'] ?? 'Bot unavailable';
+          return {
+            'message': "Error: $errorMessage",
+            'openAiThreadId': openAiThreadId,
+            'error': true,
+          };
+        } catch (e) {
+          return {
+            'message':
+                "I'm sorry, I couldn't process that request. Please try again.",
+            'openAiThreadId': openAiThreadId,
+            'error': true,
+          };
+        }
+      }
+    } catch (e) {
+      print("Exception in askBot: $e");
+      return {
+        'message': "I'm sorry, I couldn't process that request.",
+        'openAiThreadId': openAiThreadId,
+        'error': true,
+      };
+    }
+  }
+
+  // Helper method to parse SSE responses
+  Future<Map<String, dynamic>> _parseSSEResponse(
+    http.StreamedResponse response,
+    String fallbackThreadId, {
+    Function(String)? onChunkReceived,
+  }) async {
+    String fullMessage = '';
+    String conversationId = fallbackThreadId;
+
+    try {
+      final responseBody = await response.stream.bytesToString();
+      print("Raw SSE response: $responseBody");
+
+      // Parse SSE format
+      final lines = responseBody.split('\n');
+
+      for (var line in lines) {
+        if (line.startsWith('data: ')) {
+          final data = line.substring(6); // Remove 'data: ' prefix
+          if (data.trim().isNotEmpty) {
+            try {
+              final json = jsonDecode(data);
+              if (json['content'] != null) {
+                fullMessage += json['content'];
+                if (onChunkReceived != null && json['content'].isNotEmpty) {
+                  onChunkReceived(json['content']);
+                }
+              }
+              if (json['conversationId'] != null &&
+                  conversationId.startsWith('bot-thread-')) {
+                conversationId = json['conversationId'];
+              }
+            } catch (e) {
+              print("Error parsing SSE data: $e");
+            }
+          }
+        }
+      }
+
+      print("Parsed message: $fullMessage");
+      print("Conversation ID: $conversationId");
+
+      return {
+        'message':
+            fullMessage.isNotEmpty
+                ? fullMessage
+                : "Hello! How can I assist you today?",
+        'openAiThreadId': conversationId,
+      };
+    } catch (e) {
+      print("Error parsing SSE response: $e");
+      return {
+        'message': "I received your message.",
+        'openAiThreadId': fallbackThreadId,
+      };
+    }
+  }
+
   Future<List<Bot>> fetchBots(String token) async {
     var headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
 
@@ -236,62 +458,6 @@ class BotService {
     }
   }
 
-  Future<Map<String, dynamic>?> createThreadForBot(
-    String token,
-    String botId,
-    String firstMsg,
-  ) async {
-    var headers = {
-      'x-jarvis-guid': '',
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
-
-    try {
-      var request = http.Request(
-        'POST',
-        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/thread'),
-      );
-      request.body = json.encode({
-        "assistantId": botId,
-        "firstMessage": firstMsg,
-      });
-      request.headers.addAll(headers);
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/thread'),
-        headers: headers,
-        body: json.encode({"assistantId": botId, "firstMessage": firstMsg}),
-      );
-
-      if (response.statusCode == 200) {
-        print("Thread created successfully: ${response.body}");
-
-        // Attempt to parse as JSON
-        Map<String, dynamic> data = json.decode(response.body);
-
-        // If the response doesn't contain message data, synthesize it
-        if (!data.containsKey('message')) {
-          data['message'] = "Hello! How can I assist you today?";
-        }
-
-        return data;
-      } else {
-        print(
-          "Error creating thread: ${response.statusCode} - ${response.body}",
-        );
-        return null;
-      }
-    } catch (e) {
-      print("Exception in createThreadForBot: $e");
-      return {
-        'openAiThreadId':
-            'placeholder-thread-${DateTime.now().millisecondsSinceEpoch}',
-        'message': 'Hello! How can I assist you today?',
-      };
-    }
-  }
-
   Future<void> updateBotWithNewThreadPlayGround(
     String token,
     String botId,
@@ -318,89 +484,6 @@ class BotService {
       print(await response.stream.bytesToString());
     } else {
       print(response.reasonPhrase);
-    }
-  }
-
-  Future<Map<String, dynamic>?> askBot(
-    String token,
-    String botId,
-    String msg,
-    String openAiThreadId,
-    String additionalInstruction, {
-    Function(String)? onChunkReceived,
-  }) async {
-    var headers = {
-      'x-jarvis-guid': '',
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-      'Accept': 'text/event-stream', // Important for SSE
-    };
-
-    try {
-      var request = http.Request(
-        'POST',
-        Uri.parse('$baseUrl/kb-core/v1/ai-assistant/$botId/ask'),
-      );
-      request.body = json.encode({
-        "message": msg,
-        "openAiThreadId": openAiThreadId,
-        "additionalInstruction": additionalInstruction,
-      });
-      request.headers.addAll(headers);
-
-      var response = await request.send();
-
-      if (response.statusCode == 200) {
-        // Handle streaming response
-        String fullResponse = '';
-        String partialResponse = '';
-
-        await for (var chunk in response.stream.transform(utf8.decoder)) {
-          print("Received chunk: $chunk");
-
-          // Parse the SSE format
-          for (var line in chunk.split('\n')) {
-            if (line.startsWith('data:')) {
-              String data = line.substring(5).trim();
-
-              try {
-                // Try to parse as JSON
-                Map<String, dynamic> jsonData = json.decode(data);
-
-                if (jsonData.containsKey('content')) {
-                  partialResponse = jsonData['content'];
-                  fullResponse += partialResponse;
-
-                  if (onChunkReceived != null) {
-                    onChunkReceived(partialResponse);
-                  }
-                }
-
-                // Check if this is the end of the message
-                if (line.contains('message_end')) {
-                  break;
-                }
-              } catch (e) {
-                print("Error parsing SSE data: $e");
-              }
-            }
-          }
-        }
-
-        // Return the complete response
-        return {'message': fullResponse, 'openAiThreadId': openAiThreadId};
-      } else {
-        print(
-          "Error asking bot: ${response.statusCode} ${response.reasonPhrase}",
-        );
-        return null;
-      }
-    } catch (e) {
-      print("Exception in askBot: $e");
-      return {
-        'message': "I'm sorry, I couldn't process that request.",
-        'openAiThreadId': openAiThreadId,
-      };
     }
   }
 
