@@ -11,10 +11,12 @@ import 'package:aichat/widgets/prompt_library_overlay.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:aichat/widgets/message_bubble.dart';
 import 'package:aichat/widgets/prompt_input_overlay.dart';
+import 'package:aichat/core/services/subscription_service.dart';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:aichat/widgets/prompt_suggestion_overlay.dart';
+import 'package:aichat/core/services/subscription_state_manager.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -43,10 +45,17 @@ class _ChatAreaState extends State<ChatArea> {
   int _tokenLimit = 50; // Default limit
   bool _isUnlimited = false;
   int _availableTokens = 0;
+  final SubscriptionService _subscriptionService = SubscriptionService();
+  final SubscriptionStateManager _subscriptionState =
+      SubscriptionStateManager();
 
   @override
   void initState() {
     super.initState();
+
+    // Listen to subscription state changes
+    _subscriptionState.addListener(_onSubscriptionStateChanged);
+
     _loadData();
     _fetchTokenUsage();
     _messageController.addListener(_handleTextChange);
@@ -55,6 +64,27 @@ class _ChatAreaState extends State<ChatArea> {
         _hidePromptSuggestions();
       }
     });
+
+    // Check token status when coming from subscription screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchTokenUsage();
+    });
+  }
+
+  // Add this method
+  void _onSubscriptionStateChanged() {
+    _fetchTokenUsage();
+  }
+
+  @override
+  void dispose() {
+    _subscriptionState.removeListener(_onSubscriptionStateChanged);
+    _messageController.removeListener(_handleTextChange);
+    _inputFocusNode.dispose();
+    _hidePromptSuggestions();
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _loadData() async {
@@ -112,36 +142,40 @@ class _ChatAreaState extends State<ChatArea> {
 
     if (accessToken.isEmpty) return;
 
+    // Check subscription state manager first
+    final subscriptionState = SubscriptionStateManager();
+
+    // If user is Pro in our local state, set unlimited tokens
+    if (subscriptionState.isPro) {
+      setState(() {
+        _availableTokens = 999999; // Show a large number
+        _isUnlimited = true; // Mark as unlimited
+        _tokenUsage = 0; // No usage tracking
+      });
+      return;
+    }
+
+    // For non-Pro users, try to get actual token data
     try {
-      var headers = {
-        'x-jarvis-guid': '',
-        'Authorization': 'Bearer $accessToken',
-      };
-      var request = http.Request(
-        'GET',
-        Uri.parse('https://api.dev.jarvis.cx/api/v1/tokens/usage'),
-      );
-      request.headers.addAll(headers);
+      final tokenData = await _subscriptionService.getTokenUsage(accessToken);
 
-      http.StreamedResponse response = await request.send();
-
-      if (response.statusCode == 200) {
-        final data = await response.stream.bytesToString();
-        final json = jsonDecode(data);
-
-        if (mounted) {
-          setState(() {
-            // Update to use available tokens directly
-            _availableTokens = json['availableTokens'] ?? 0;
-            _tokenLimit = json['totalTokens'] ?? 50;
-            _tokenUsage = (_tokenLimit - _availableTokens);
-          });
-        }
-      } else {
-        print('Error fetching token usage: ${response.reasonPhrase}');
+      if (tokenData != null && mounted) {
+        setState(() {
+          _availableTokens =
+              subscriptionState.availableTokens; // Use state manager value
+          _tokenLimit = tokenData['totalTokens'] ?? 50;
+          _isUnlimited =
+              subscriptionState.isUnlimited; // Use state manager value
+          _tokenUsage = (_tokenLimit - _availableTokens);
+        });
       }
     } catch (e) {
       print('Exception fetching token usage: $e');
+      // Use state manager values as fallback
+      setState(() {
+        _availableTokens = subscriptionState.availableTokens;
+        _isUnlimited = subscriptionState.isUnlimited;
+      });
     }
   }
 
@@ -189,17 +223,6 @@ class _ChatAreaState extends State<ChatArea> {
         );
       }
     });
-  }
-
-  @override
-  void dispose() {
-    _messageController.removeListener(_handleTextChange);
-    _inputFocusNode.dispose();
-    _hidePromptSuggestions();
-    _messageController.dispose();
-    _scrollController.dispose();
-
-    super.dispose();
   }
 
   void _handleKeyPress() {
@@ -451,7 +474,6 @@ class _ChatAreaState extends State<ChatArea> {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
 
-    // Clear the input field immediately
     _messageController.clear();
 
     final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
@@ -464,18 +486,20 @@ class _ChatAreaState extends State<ChatArea> {
       return;
     }
 
-    // Get the chat provider
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-
-    // Don't send if already sending
     if (chatProvider.isSendingMessage) return;
 
     try {
-      // Use the direct method instead of the service method
-      await chatProvider.sendMessageDirect(accessToken, message);
-      await _fetchTokenUsage();
+      // Only use a token if user is not Pro
+      if (!_subscriptionState.isUnlimited) {
+        _subscriptionState.useToken(); // Decrease token count
+      }
 
-      // Scroll to bottom after sending
+      await chatProvider.sendMessageDirect(accessToken, message);
+
+      // Refresh token display
+      _fetchTokenUsage();
+
       _scrollToBottom();
     } catch (e) {
       print('Unexpected error in _sendMessage: $e');
@@ -787,38 +811,75 @@ class _ChatAreaState extends State<ChatArea> {
                               size: 16,
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              "${_availableTokens}",
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 13,
-                              ),
-                            ),
+                            _isUnlimited
+                                ? Icon(
+                                  Icons.all_inclusive,
+                                  color: Colors.blue,
+                                  size: 16,
+                                )
+                                : Text(
+                                  "$_availableTokens",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 13,
+                                  ),
+                                ),
                           ],
                         ),
 
-                        // Infinity symbol
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.all_inclusive,
-                              color: Colors.grey.shade400,
-                              size: 16,
+                        // Status indicator - show infinity for unlimited users
+                        if (_isUnlimited)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                          ],
-                        ),
-
-                        // Upgrade button
-                        TextButton.icon(
-                          onPressed: () {
-                            // Handle upgrade action
-                          },
-                          icon: const Icon(Icons.rocket_launch, size: 16),
-                          label: const Text('Upgrade'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.blue,
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.star,
+                                  color: Colors.blue.shade700,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Pro',
+                                  style: TextStyle(
+                                    color: Colors.blue.shade700,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Icon(
+                            Icons.all_inclusive,
+                            color: Colors.grey.shade400,
+                            size: 16,
                           ),
-                        ),
+
+                        // Upgrade button - only show if not unlimited
+                        if (!_isUnlimited)
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/subscription');
+                            },
+                            icon: const Icon(Icons.rocket_launch, size: 16),
+                            label: const Text('Upgrade'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blue,
+                            ),
+                          )
+                        else
+                          const SizedBox(
+                            width: 80,
+                          ), // Spacer when no upgrade button
                       ],
                     ),
                   ),
