@@ -15,9 +15,10 @@ import 'package:aichat/core/providers/chat_provider.dart';
 import 'package:aichat/core/providers/ai_model_provider.dart';
 import 'package:aichat/widgets/update_bot.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:aichat/Screens/subscription_screen.dart';
 
 Future<void> main() async {
-  await dotenv.load();  // Load .env file
+  await dotenv.load(); // Load .env file
   runApp(
     MultiProvider(
       providers: [
@@ -63,12 +64,16 @@ class MyApp extends StatelessWidget {
         '/history': (context) => const ChatHistoryScreen(),
         '/knowledge': (context) => const KnowledgeScreen(),
         '/email': (context) => const EmailScreen(),
+        '/subscription': (context) => const SubscriptionScreen(),
         '/updateBot':
             (context) => UpdateBot(
               botId: '',
               initialName: '',
               initialDescription: '',
-              initialInstructions: '', onBack: () {Navigator.pop(context);},
+              initialInstructions: '',
+              onBack: () {
+                Navigator.pop(context);
+              },
             ),
       },
     );

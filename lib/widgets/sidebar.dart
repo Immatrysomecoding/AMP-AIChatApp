@@ -88,6 +88,18 @@ class Sidebar extends StatelessWidget {
             },
           ),
 
+          _buildNavOption(
+            context: context,
+            icon: Icons.star_border,
+            label: 'Subscription',
+            isSelected: selectedItem == 'Subscription',
+            onTap: () {
+              if (selectedItem != 'Subscription') {
+                Navigator.pushReplacementNamed(context, '/subscription');
+              }
+            },
+          ),
+
           const Spacer(),
 
           // Bottom icons
