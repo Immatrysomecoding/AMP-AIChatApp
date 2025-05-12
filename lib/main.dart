@@ -1,4 +1,5 @@
 import 'package:aichat/Screens/email_screen.dart';
+import 'package:aichat/Screens/home_page_screen.dart';
 import 'package:aichat/Screens/knowledge_screen.dart';
 import 'package:aichat/core/providers/knowledge_provider.dart';
 import 'package:flutter/material.dart';
@@ -55,8 +56,9 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
       ),
       themeMode: ThemeMode.light, // Thay đổi thành light mode
-      initialRoute: '/login',
+      initialRoute: '/home',
       routes: {
+        '/home': (context) => const HomePage(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
         '/chat': (context) => const ChatScreen(),
