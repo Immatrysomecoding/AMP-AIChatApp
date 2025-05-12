@@ -1117,6 +1117,10 @@ class _ChatAreaState extends State<ChatArea> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 4,
       color: Colors.white,
+      onOpened: () {
+        // Fetch the latest bots when the dropdown is opened
+        _fetchUserBots();
+      },
       child: Container(
         constraints: const BoxConstraints(minWidth: 120, maxWidth: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1216,9 +1220,6 @@ class _ChatAreaState extends State<ChatArea> {
                 .where((model) => model.id.startsWith('bot_'))
                 .toList();
 
-        // Always fetch the latest bots
-        _fetchUserBots();
-
         // Only add the Your Bots section if we have actual bots
         if (customBots.isNotEmpty) {
           items.add(
@@ -1238,9 +1239,6 @@ class _ChatAreaState extends State<ChatArea> {
           );
 
           for (var bot in customBots) {
-            // Skip any bot with a generic name like "Jarvis Bot"
-            if (bot.name.toLowerCase() == "jarvis bot") continue;
-
             items.add(
               PopupMenuItem<AIModel>(
                 value: bot,
