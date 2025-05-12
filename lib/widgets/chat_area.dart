@@ -641,6 +641,7 @@ class _ChatAreaState extends State<ChatArea> {
                               color: Colors.grey,
                               tooltip: 'Prompt Library',
                             ),
+                            // FIXED CHAT HISTORY NAVIGATION
                             IconButton(
                               icon: const Icon(Icons.history),
                               onPressed: () {

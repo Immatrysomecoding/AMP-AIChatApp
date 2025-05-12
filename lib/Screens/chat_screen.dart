@@ -17,15 +17,33 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   UserToken? user;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     user = Provider.of<UserTokenProvider>(context, listen: false).user;
 
-    // Add a post-frame callback to avoid modifying state during build
+    // Add a post-frame callback to handle navigation arguments
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Check if there's an existing conversation (from history) before starting a new one
+      _handleNavigationArgs();
+    });
+  }
+
+  void _handleNavigationArgs() {
+    if (_isInitialized) return;
+    _isInitialized = true;
+
+    // Check if we have navigation arguments (conversation data)
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null && args is Map<String, dynamic>) {
+      final conversationId = args['conversationId'] as String?;
+      if (conversationId != null) {
+        // Load the conversation
+        _loadConversation(conversationId);
+      }
+    } else {
+      // Check if there's an existing conversation in the provider
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
       if (chatProvider.currentConversation != null &&
           chatProvider.currentConversation!.messages.isNotEmpty) {
@@ -33,7 +51,26 @@ class _ChatScreenState extends State<ChatScreen> {
           "Found existing conversation in provider with ${chatProvider.currentConversation!.messages.length} messages",
         );
       }
-    });
+    }
+  }
+
+  Future<void> _loadConversation(String conversationId) async {
+    final userProvider = Provider.of<UserTokenProvider>(context, listen: false);
+    final token = userProvider.user?.accessToken ?? '';
+
+    if (token.isEmpty) return;
+
+    try {
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.loadConversation(token, conversationId);
+    } catch (e) {
+      print("Error loading conversation: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading conversation: $e')),
+        );
+      }
+    }
   }
 
   @override

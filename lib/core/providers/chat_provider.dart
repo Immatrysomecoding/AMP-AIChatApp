@@ -190,7 +190,17 @@ class ChatProvider with ChangeNotifier {
   Future<void> loadConversation(String token, String conversationId) async {
     if (_selectedModel == null) {
       print("Warning: No model selected in loadConversation");
-      return;
+      // Set a default model if none is selected
+      _selectedModel = _availableModels.firstWhere(
+        (model) => model.id == 'gpt-4o-mini',
+        orElse:
+            () => AIModel(
+              id: 'gpt-4o-mini',
+              model: 'dify',
+              name: 'GPT-4o mini',
+              isDefault: true,
+            ),
+      );
     }
 
     _setLoading(true);
@@ -198,20 +208,24 @@ class ChatProvider with ChangeNotifier {
 
     try {
       // Check if we already have this conversation loaded
-      Conversation? existingConversation = _conversations.firstWhere(
-        (conv) => conv.id == conversationId,
-        orElse:
-            () => Conversation(
-              id: conversationId,
-              title: 'Loading...',
-              createdAt: DateTime.now(),
-              assistant: AIAssistant(
-                id: _selectedModel!.id,
-                model: _selectedModel!.model,
-                name: _selectedModel!.name,
-              ),
-            ),
-      );
+      Conversation? existingConversation;
+      try {
+        existingConversation = _conversations.firstWhere(
+          (conv) => conv.id == conversationId,
+        );
+      } catch (e) {
+        // Conversation not found, create a temporary one
+        existingConversation = Conversation(
+          id: conversationId,
+          title: 'Loading...',
+          createdAt: DateTime.now(),
+          assistant: AIAssistant(
+            id: _selectedModel!.id,
+            model: _selectedModel!.model,
+            name: _selectedModel!.name,
+          ),
+        );
+      }
 
       print(
         "Loading conversation: ${existingConversation.id} - ${existingConversation.title}",
@@ -238,16 +252,31 @@ class ChatProvider with ChangeNotifier {
         // Process each message
         for (var item in items) {
           try {
+            // Parse the date safely
+            DateTime createdAt;
+            try {
+              // Check if createdAt is a string or an int
+              if (item['createdAt'] is String) {
+                createdAt = DateTime.parse(item['createdAt']);
+              } else if (item['createdAt'] is int) {
+                createdAt = DateTime.fromMillisecondsSinceEpoch(
+                  item['createdAt'] * 1000,
+                );
+              } else {
+                // Default to current time if date is invalid
+                createdAt = DateTime.now();
+              }
+            } catch (e) {
+              print("Date parsing error for message: $e");
+              createdAt = DateTime.now();
+            }
+
             // User message
             var userMessage = ChatMessage(
               id: "${item['id'] ?? DateTime.now().millisecondsSinceEpoch}_user",
               content: item['query'] ?? '',
               role: 'user',
-              createdAt: DateTime.fromMillisecondsSinceEpoch(
-                (item['createdAt'] ??
-                        (DateTime.now().millisecondsSinceEpoch ~/ 1000)) *
-                    1000,
-              ),
+              createdAt: createdAt,
               assistant: AIAssistant(
                 id: _selectedModel!.id,
                 model: _selectedModel!.model,
@@ -261,12 +290,7 @@ class ChatProvider with ChangeNotifier {
                   "${item['id'] ?? DateTime.now().millisecondsSinceEpoch}_response",
               content: item['answer'] ?? 'No response available',
               role: 'model',
-              createdAt: DateTime.fromMillisecondsSinceEpoch(
-                (item['createdAt'] ??
-                            (DateTime.now().millisecondsSinceEpoch ~/ 1000)) *
-                        1000 +
-                    1,
-              ),
+              createdAt: createdAt.add(Duration(milliseconds: 1)),
               assistant: AIAssistant(
                 id: _selectedModel!.id,
                 model: _selectedModel!.model,
@@ -276,8 +300,13 @@ class ChatProvider with ChangeNotifier {
 
             messages.add(userMessage);
             messages.add(aiMessage);
+
+            print(
+              "Added messages: User='${userMessage.content}', AI='${aiMessage.content}'",
+            );
           } catch (e) {
             print("Error processing message: $e");
+            print("Message data: ${json.encode(item)}");
           }
         }
 
@@ -285,26 +314,33 @@ class ChatProvider with ChangeNotifier {
         existingConversation.messages = messages;
         existingConversation.title =
             existingConversation.title == 'Loading...' && items.isNotEmpty
-                ? (items[0]['query'] ?? 'Conversation').substring(
-                  0,
-                  math.min(20, (items[0]['query'] ?? 'Conversation').length),
-                )
+                ? (items[0]['query'] ?? 'Conversation').toString().length > 20
+                    ? "${items[0]['query'].toString().substring(0, 20)}..."
+                    : items[0]['query'].toString()
                 : existingConversation.title;
 
         // Set as current conversation
         _currentConversation = existingConversation;
 
         // Make sure it's in our conversations list
+        final conversationToCheck =
+            existingConversation; // Create a final variable
         bool exists = _conversations.any(
-          (conv) => conv.id == existingConversation.id,
+          (conv) => conv.id == conversationToCheck.id, // Use the final variable
         );
         if (!exists) {
           _conversations.insert(0, existingConversation);
         }
+
+        // Clear any "New Conversation" entries
+        _conversations.removeWhere((conv) => conv.id.startsWith('temp-'));
+
+        print("Loaded ${messages.length} messages for conversation");
       } else {
         print(
           "Error loading messages: ${response.statusCode} - ${response.reasonPhrase}",
         );
+        print("Response body: ${response.body}");
         throw Exception(
           "Failed to load conversation messages: ${response.statusCode}",
         );

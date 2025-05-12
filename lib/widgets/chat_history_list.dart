@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
+import 'package:aichat/core/providers/chat_provider.dart'; // Add this import
 import 'package:intl/intl.dart';
 import 'dart:math' as Math;
 
@@ -149,51 +150,23 @@ class _ChatHistoryListState extends State<ChatHistoryList> {
         return;
       }
 
-      // Fetch the conversation messages
-      final url = Uri.parse(
-        'https://api.dev.jarvis.cx/api/v1/ai-chat/conversations/$conversationId/messages?assistantId=gpt-4o-mini&assistantModel=dify',
-      );
+      // Add ChatProvider import if not already there
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
-      final headers = {'x-jarvis-guid': '', 'Authorization': 'Bearer $token'};
+      // Load the conversation messages using the ChatProvider
+      await chatProvider.loadConversation(token, conversationId);
 
-      print("Fetching messages for conversation: $conversationId");
-      final response = await http.get(url, headers: headers);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        print(
-          "Conversation messages API response: ${response.body.substring(0, Math.min(200, response.body.length))}...",
-        );
-
-        // Store the conversation details in a shared preference or pass directly to the chat screen
-        // For now, just navigate to the chat screen
-        if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/chat',
-            arguments: {
-              'conversationId': conversationId,
-              'messages': data['items'] ?? [],
-            },
-          );
-        }
-      } else {
-        print("API error: ${response.statusCode} - ${response.reasonPhrase}");
-        print("Response body: ${response.body}");
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to load conversation messages')),
-          );
-        }
+      // Navigate to chat screen
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/chat');
       }
     } catch (e) {
       print("Exception selecting conversation: $e");
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading conversation: $e')),
+        );
       }
     } finally {
       if (mounted) {
