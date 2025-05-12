@@ -15,6 +15,7 @@ import 'package:aichat/core/providers/chat_provider.dart';
 import 'package:aichat/core/providers/ai_model_provider.dart';
 import 'package:aichat/widgets/update_bot.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:aichat/Screens/home_page_screen.dart';
 
 Future<void> main() async {
   await dotenv.load();  // Load .env file
@@ -54,8 +55,10 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
       ),
       themeMode: ThemeMode.light, // Thay đổi thành light mode
-      initialRoute: '/login',
+      initialRoute: '/home',
       routes: {
+        '/': (context) => const HomePage(),
+        '/home': (context) => const HomePage(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
         '/chat': (context) => const ChatScreen(),
