@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:aichat/core/providers/prompt_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/core/models/Prompt.dart';
-import 'create_prompt_dialog.dart';
+import '../Dialog/create_prompt_dialog.dart';
 import 'update_prompt_dialog.dart';
 
 class PromptLibraryOverlay extends StatefulWidget {

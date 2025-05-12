@@ -1,5 +1,5 @@
-import 'package:aichat/widgets/add_knowledge_source.dart';
-import 'package:aichat/widgets/confirm_removal_dialog.dart';
+import 'package:aichat/widgets/Dialog/add_knowledge_source.dart';
+import 'package:aichat/widgets/Dialog/confirm_removal_dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

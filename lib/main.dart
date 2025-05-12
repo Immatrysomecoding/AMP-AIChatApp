@@ -14,7 +14,7 @@ import 'package:aichat/core/providers/prompt_provider.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:aichat/core/providers/chat_provider.dart';
 import 'package:aichat/core/providers/ai_model_provider.dart';
-import 'package:aichat/widgets/update_bot.dart';
+import 'package:aichat/widgets/Bot/update_bot.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:aichat/Screens/subscription_screen.dart';
 

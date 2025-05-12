@@ -1,12 +1,12 @@
 import 'package:aichat/core/models/Knowledge.dart';
 import 'package:aichat/core/providers/knowledge_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
-import 'package:aichat/widgets/confirm_removal_dialog.dart';
-import 'package:aichat/widgets/update_knowledge_dialog.dart';
+import 'package:aichat/widgets/Dialog/confirm_removal_dialog.dart';
+import 'package:aichat/widgets/Knowledge/update_knowledge_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:aichat/widgets/knowledge_card.dart';
-import 'package:aichat/widgets/create_knowledge_dialog.dart';
+import 'package:aichat/widgets/Knowledge/knowledge_card.dart';
+import 'package:aichat/widgets/Knowledge/create_knowledge_dialog.dart';
 
 class KnowledgeList extends StatefulWidget {
   const KnowledgeList({super.key});

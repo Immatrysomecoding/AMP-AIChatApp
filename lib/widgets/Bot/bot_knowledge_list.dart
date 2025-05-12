@@ -2,7 +2,7 @@ import 'package:aichat/core/models/Knowledge.dart';
 import 'package:aichat/core/providers/knowledge_provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
-import 'package:aichat/widgets/create_knowledge_dialog.dart';
+import 'package:aichat/widgets/Knowledge/create_knowledge_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

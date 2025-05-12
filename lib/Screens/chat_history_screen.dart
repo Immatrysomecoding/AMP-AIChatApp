@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/chat_history_list.dart';
+import '../widgets/Chat/chat_history_list.dart';
 
 class ChatHistoryScreen extends StatefulWidget {
   const ChatHistoryScreen({super.key});

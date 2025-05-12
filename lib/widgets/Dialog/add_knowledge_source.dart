@@ -1,9 +1,9 @@
-import 'package:aichat/widgets/import_confluence_source.dart';
-import 'package:aichat/widgets/import_slack_source_dialog.dart';
+import 'package:aichat/widgets/Dialog/import_confluence_source.dart';
+import 'package:aichat/widgets/Dialog/import_slack_source_dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:aichat/widgets/import_web_source_dialog.dart';
-import 'package:aichat/widgets/import_local_file_dialog.dart';
+import 'package:aichat/widgets/Dialog/import_web_source_dialog.dart';
+import 'package:aichat/widgets/Dialog/import_local_file_dialog.dart';
 
 class KnowledgeSourceDialog extends StatefulWidget {
   const KnowledgeSourceDialog({

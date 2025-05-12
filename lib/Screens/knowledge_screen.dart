@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/sidebar.dart';
-import '../widgets/knowledge_list.dart';
+import '../widgets/Knowledge/knowledge_list.dart';
 import 'package:provider/provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/core/models/UserToken.dart';

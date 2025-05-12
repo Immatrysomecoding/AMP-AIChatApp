@@ -1,4 +1,4 @@
-import 'package:aichat/widgets/add_knowledge_source.dart';
+import 'package:aichat/widgets/Dialog/add_knowledge_source.dart';
 import 'package:flutter/material.dart';
 
 class CreateBotDialog extends StatefulWidget {

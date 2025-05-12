@@ -1,11 +1,11 @@
 import 'package:aichat/core/providers/user_token_provider.dart';
-import 'package:aichat/widgets/confirm_removal_dialog.dart';
-import 'package:aichat/widgets/publishing_bots.dart';
+import 'package:aichat/widgets/Dialog/confirm_removal_dialog.dart';
+import 'package:aichat/widgets/Bot/publishing_bots.dart';
 import 'package:flutter/material.dart';
 import 'package:aichat/core/models/Knowledge.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:aichat/widgets/bot_knowledge_list.dart';
+import 'package:aichat/widgets/Bot/bot_knowledge_list.dart';
 
 // Simple message model for the chat preview
 class ChatMessage {

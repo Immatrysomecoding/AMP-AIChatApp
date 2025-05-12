@@ -1,4 +1,4 @@
-import 'package:aichat/widgets/email.dart';
+import 'package:aichat/widgets/Email/email.dart';
 import 'package:aichat/widgets/sidebar.dart';
 import 'package:flutter/material.dart';
 

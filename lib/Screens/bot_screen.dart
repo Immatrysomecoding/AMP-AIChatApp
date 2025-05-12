@@ -1,7 +1,7 @@
-import 'package:aichat/widgets/update_bot.dart';
+import 'package:aichat/widgets/Bot/update_bot.dart';
 import 'package:flutter/material.dart';
 import '../widgets/sidebar.dart';
-import '../widgets/bot_list.dart';
+import '../widgets/Bot/bot_list.dart';
 
 class BotScreen extends StatefulWidget {
   const BotScreen({super.key});

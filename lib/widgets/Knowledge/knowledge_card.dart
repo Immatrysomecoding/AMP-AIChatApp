@@ -1,4 +1,4 @@
-import 'package:aichat/widgets/knowledge_detail.dart';
+import 'package:aichat/widgets/Knowledge/knowledge_detail.dart';
 import 'package:flutter/material.dart';
 
 class KnowledgeCard extends StatelessWidget {
