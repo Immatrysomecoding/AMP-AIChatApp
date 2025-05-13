@@ -1,14 +1,12 @@
 import 'package:aichat/core/models/AIModel.dart';
 import 'package:aichat/core/providers/ai_model_provider.dart';
 import 'package:flutter/material.dart';
-import '../widgets/sidebar.dart';
-import '../widgets/Chat/chat_area.dart';
+import 'package:aichat/widgets/sidebar.dart';
+import 'package:aichat/widgets/Chat/chat_area.dart';
 import 'package:provider/provider.dart';
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/core/models/UserToken.dart';
 import 'package:aichat/core/providers/chat_provider.dart';
-import 'package:aichat/core/providers/user_token_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:aichat/core/services/subscription_service.dart';
 
 class ChatScreen extends StatefulWidget {

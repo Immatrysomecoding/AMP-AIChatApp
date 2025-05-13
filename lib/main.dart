@@ -1,25 +1,38 @@
-import 'package:aichat/Screens/email_screen.dart';
-import 'package:aichat/Screens/home_page_screen.dart';
-import 'package:aichat/Screens/knowledge_screen.dart';
-import 'package:aichat/core/providers/knowledge_provider.dart';
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
 import 'package:provider/provider.dart';
-import 'screens/signup_screen.dart';
-import 'screens/chat_screen.dart';
-import 'screens/bot_screen.dart';
-import 'screens/chat_history_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+// Screens imports - all with lowercase 'screens'
+import 'package:aichat/screens/home_page_screen.dart';
+import 'package:aichat/screens/login_screen.dart';
+import 'package:aichat/screens/signup_screen.dart';
+import 'package:aichat/screens/chat_screen.dart';
+import 'package:aichat/screens/bot_screen.dart';
+import 'package:aichat/screens/chat_history_screen.dart';
+import 'package:aichat/screens/knowledge_screen.dart';
+import 'package:aichat/screens/email_screen.dart';
+import 'package:aichat/screens/subscription_screen.dart';
+import 'package:aichat/screens/ads_screen.dart';
+
+// Providers
 import 'package:aichat/core/providers/user_token_provider.dart';
 import 'package:aichat/core/providers/prompt_provider.dart';
 import 'package:aichat/core/providers/bot_provider.dart';
 import 'package:aichat/core/providers/chat_provider.dart';
 import 'package:aichat/core/providers/ai_model_provider.dart';
+import 'package:aichat/core/providers/knowledge_provider.dart';
+
+// Services
+import 'package:aichat/core/services/subscription_state_manager.dart';
+
+// Widgets
 import 'package:aichat/widgets/Bot/update_bot.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:aichat/Screens/subscription_screen.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   await dotenv.load(); // Load .env file
+
   runApp(
     MultiProvider(
       providers: [
@@ -29,6 +42,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => AIModelProvider()),
         ChangeNotifierProvider(create: (_) => KnowledgeProvider()),
+        ChangeNotifierProvider(create: (_) => SubscriptionStateManager()),
       ],
       child: const MyApp(),
     ),
@@ -55,7 +69,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.black,
         fontFamily: 'Roboto',
       ),
-      themeMode: ThemeMode.light, // Thay đổi thành light mode
+      themeMode: ThemeMode.light,
       initialRoute: '/home',
       routes: {
         '/home': (context) => const HomePage(),
@@ -67,6 +81,7 @@ class MyApp extends StatelessWidget {
         '/knowledge': (context) => const KnowledgeScreen(),
         '/email': (context) => const EmailScreen(),
         '/subscription': (context) => const SubscriptionScreen(),
+        '/ads': (context) => const AdsScreen(),
         '/updateBot':
             (context) => UpdateBot(
               botId: '',

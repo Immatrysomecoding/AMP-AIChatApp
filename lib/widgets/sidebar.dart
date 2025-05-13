@@ -100,6 +100,18 @@ class Sidebar extends StatelessWidget {
             },
           ),
 
+          _buildNavOption(
+            context: context,
+            icon: Icons.monetization_on,
+            label: 'Earn Tokens',
+            isSelected: selectedItem == 'Ads',
+            onTap: () {
+              if (selectedItem != 'Ads') {
+                Navigator.pushReplacementNamed(context, '/ads');
+              }
+            },
+          ),
+
           const Spacer(),
 
           // Bottom icons

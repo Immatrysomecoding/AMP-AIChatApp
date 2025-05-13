@@ -19,6 +19,7 @@ import 'package:aichat/widgets/Prompt/prompt_suggestion_overlay.dart';
 import 'package:aichat/core/services/subscription_state_manager.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:aichat/widgets/common/earn_tokens_button.dart';
 
 class ChatArea extends StatefulWidget {
   const ChatArea({super.key});
@@ -687,86 +688,72 @@ class _ChatAreaState extends State<ChatArea> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.end, // Align to bottom
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        // Text field
                         Expanded(
-                          child: RawKeyboardListener(
-                            focusNode: FocusNode(),
-                            onKey: (RawKeyEvent event) {
-                              if (event is RawKeyDownEvent &&
-                                  event.logicalKey == LogicalKeyboardKey.tab &&
-                                  _isShowingPromptSuggestions &&
-                                  _filteredPrompts.isNotEmpty) {
-                                // Prevent default tab behavior and select the prompt
-                                _selectPrompt(
-                                  _filteredPrompts[_selectedPromptIndex],
-                                );
-                                // Prevent the event from being processed further
-                                return;
+                          child: TextField(
+                            controller: _messageController,
+                            focusNode: _inputFocusNode,
+                            decoration: InputDecoration(
+                              hintText:
+                                  "Ask me anything, press '/' for prompts...",
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.only(
+                                left: 20,
+                                right: 20,
+                                top:
+                                    8, // Reduced top padding to position text higher
+                                bottom: 16,
+                              ),
+                              hintStyle: TextStyle(color: Colors.grey.shade600),
+                              alignLabelWithHint:
+                                  true, // Aligns hint text with the top
+                            ),
+                            textAlignVertical:
+                                TextAlignVertical.top, // Aligns text to top
+                            maxLines: null,
+                            minLines: 1,
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) {
+                              _hidePromptSuggestions();
+                              _sendMessage();
+                            },
+                            enabled: !chatProvider.isSendingMessage,
+                            onTap: () {
+                              // Reshow suggestions if "/" is in text and field is tapped
+                              if (_messageController.text.contains('/')) {
+                                _handleTextChange();
                               }
                             },
-                            child: CompositedTransformTarget(
-                              link: _layerLink,
-                              child: TextField(
-                                key: _inputFieldKey,
-                                controller: _messageController,
-                                focusNode: _inputFocusNode,
-                                decoration: InputDecoration(
-                                  hintText:
-                                      "Ask me anything, press '/' for prompts...",
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 16, // INCREASED PADDING
-                                  ),
-                                  hintStyle: TextStyle(
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                maxLines: 5, // INCREASED MAX LINES
-                                minLines: 2, // MINIMUM NUMBER OF LINES
-                                textAlignVertical:
-                                    TextAlignVertical.top, // Start from top
-                                onSubmitted: (_) {
-                                  _hidePromptSuggestions();
-                                  _sendMessage();
-                                },
-                                enabled: !chatProvider.isSendingMessage,
-                                onTap: () {
-                                  // Reshow suggestions if "/" is in text and field is tapped
-                                  if (_messageController.text.contains('/')) {
-                                    _handleTextChange();
-                                  }
-                                },
-                              ),
-                            ),
                           ),
                         ),
 
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.attach_file),
-                              onPressed:
-                                  chatProvider.isSendingMessage ? null : () {},
-                              color: Colors.grey,
-                            ),
-
-                            IconButton(
-                              icon: const Icon(Icons.code),
-                              onPressed:
-                                  chatProvider.isSendingMessage ? null : () {},
-                              color: Colors.grey,
-                            ),
-
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                right: 8.0,
-                                bottom: 8.0,
+                        // Buttons inside the gray container
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4, bottom: 4),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.attach_file),
+                                onPressed:
+                                    chatProvider.isSendingMessage
+                                        ? null
+                                        : () {},
+                                color: Colors.grey,
+                                iconSize: 20,
                               ),
-                              child: IconButton(
+                              IconButton(
+                                icon: const Icon(Icons.code),
+                                onPressed:
+                                    chatProvider.isSendingMessage
+                                        ? null
+                                        : () {},
+                                color: Colors.grey,
+                                iconSize: 20,
+                              ),
+                              IconButton(
                                 icon:
                                     chatProvider.isSendingMessage
                                         ? const SizedBox(
@@ -780,7 +767,10 @@ class _ChatAreaState extends State<ChatArea> {
                                                 ),
                                           ),
                                         )
-                                        : Icon(Icons.send, color: Colors.blue),
+                                        : const Icon(
+                                          Icons.send,
+                                          color: Colors.blue,
+                                        ),
                                 onPressed:
                                     chatProvider.isSendingMessage
                                         ? null
@@ -788,9 +778,10 @@ class _ChatAreaState extends State<ChatArea> {
                                           _hidePromptSuggestions();
                                           _sendMessage();
                                         },
+                                iconSize: 20,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
