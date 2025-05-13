@@ -37,6 +37,8 @@ class _AiEmailAssistantScreenState extends State<AiEmailAssistantScreen> {
       appBar: AppBar(
         title: const Text("AI Email Assistant"),
         backgroundColor: Colors.white,
+        automaticallyImplyLeading:
+                    false,
       ),
       // color: Colors.white,
       body: LayoutBuilder(

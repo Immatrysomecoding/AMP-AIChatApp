@@ -601,47 +601,54 @@ class _PublishScreenState extends State<PublishScreen> {
         child: ElevatedButton(
           onPressed:
               selectedPlatforms.containsValue(true)
-                  ? () {
-                    if (selectedPlatforms['Slack'] == true) {
-                      Provider.of<BotProvider>(
-                        context,
-                        listen: false,
-                      ).publishSlackBot(
+                  ? () async {
+                    final token =
                         Provider.of<UserTokenProvider>(
                           context,
                           listen: false,
-                        ).user!.accessToken,
+                        ).user!.accessToken;
+
+                    final botProvider = Provider.of<BotProvider>(
+                      context,
+                      listen: false,
+                    );
+
+                    try {
+                      if (selectedPlatforms['Slack'] == true) {
+                        await botProvider.publishSlackBot(
+                          token,
+                          widget.botId,
+                          _slackTokenController.text,
+                          _clientIdController.text,
+                          _clientSecretController.text,
+                          _signingSecretController.text,
+                        );
+                      } else if (selectedPlatforms['Telegram'] == true) {
+                        await botProvider.publishTelegramBot(
+                          token,
+                          widget.botId,
+                          _telegramTokenController.text,
+                        );
+                      } else if (selectedPlatforms['Messenger'] == true) {
+                        await botProvider.publishMessengerBot(
+                          token,
+                          widget.botId,
+                          _messengerTokenController.text,
+                          _messengerPageIdController.text,
+                          _messengerAppSecretController.text,
+                        );
+                      }
+                      await botProvider.getBotConfiguration(
+                        token,
                         widget.botId,
-                        _slackTokenController.text,
-                        _clientIdController.text,
-                        _clientSecretController.text,
-                        _signingSecretController.text,
                       );
-                    } else if (selectedPlatforms['Telegram'] == true) {
-                      Provider.of<BotProvider>(
-                        context,
-                        listen: false,
-                      ).publishTelegramBot(
-                        Provider.of<UserTokenProvider>(
-                          context,
-                          listen: false,
-                        ).user!.accessToken,
-                        widget.botId,
-                        _telegramTokenController.text,
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Publish bot success!')),
                       );
-                    } else if (selectedPlatforms['Messenger'] == true) {
-                      Provider.of<BotProvider>(
-                        context,
-                        listen: false,
-                      ).publishMessengerBot(
-                        Provider.of<UserTokenProvider>(
-                          context,
-                          listen: false,
-                        ).user!.accessToken,
-                        widget.botId,
-                        _messengerTokenController.text,
-                        _messengerPageIdController.text,
-                        _messengerAppSecretController.text,
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to publish bot: $e')),
                       );
                     }
                   }
