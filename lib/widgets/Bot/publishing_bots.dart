@@ -151,7 +151,7 @@ class _PublishScreenState extends State<PublishScreen> {
                 ],
               ),
               SizedBox(height: 12),
-              _buildRequiredTextField('Token', _telegramTokenController),
+              _buildObsecureRequiredTextField('Token', _telegramTokenController),
             ],
           ),
           actions: [
@@ -278,7 +278,7 @@ class _PublishScreenState extends State<PublishScreen> {
                   ],
                 ),
                 SizedBox(height: 12),
-                _buildRequiredTextField(
+                _buildObsecureRequiredTextField(
                   'Messenger Bot Token',
                   _messengerTokenController,
                 ),
@@ -286,7 +286,7 @@ class _PublishScreenState extends State<PublishScreen> {
                   'Messenger Bot Page ID',
                   _messengerPageIdController,
                 ),
-                _buildRequiredTextField(
+                _buildObsecureRequiredTextField(
                   'Messenger Bot App Secret',
                   _messengerAppSecretController,
                 ),
@@ -419,13 +419,13 @@ class _PublishScreenState extends State<PublishScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 10),
-                  _buildRequiredTextField('Token', _slackTokenController),
+                  _buildObsecureRequiredTextField('Token', _slackTokenController),
                   _buildRequiredTextField('Client ID', _clientIdController),
-                  _buildRequiredTextField(
+                  _buildObsecureRequiredTextField(
                     'Client Secret',
                     _clientSecretController,
                   ),
-                  _buildRequiredTextField(
+                  _buildObsecureRequiredTextField(
                     'Signing Secret',
                     _signingSecretController,
                   ),
@@ -544,6 +544,37 @@ class _PublishScreenState extends State<PublishScreen> {
             ),
           ),
           TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildObsecureRequiredTextField(
+    String label,
+    TextEditingController controller,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(
+              text: '* ',
+              style: TextStyle(color: Colors.red),
+              children: [
+                TextSpan(text: label, style: TextStyle(color: Colors.black)),
+              ],
+            ),
+          ),
+          TextField(
+            obscureText: true,
             controller: controller,
             decoration: InputDecoration(
               border: OutlineInputBorder(),
